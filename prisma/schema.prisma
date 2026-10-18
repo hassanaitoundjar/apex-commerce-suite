@@ -1,0 +1,396 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(uuid()) @map("_id")
+  username          String    @unique
+  email             String    @unique
+  password          String
+  passwordSet       Boolean   @default(true)
+  provider          String    @default("credentials")
+  role              String    @default("customer")
+  permissions       String[]  @default([])
+  phone             String    @default("")
+  bio               String    @default("")
+  avatar            String    @default("")
+  preferredCurrency String    @default("USD")
+  theme             String    @default("light")
+  newsletter        Boolean   @default(true)
+  orderUpdates      Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model Product {
+  id           String    @id @default(uuid()) @map("_id")
+  name         String
+  description  String
+  price        Float
+  salePrice    Float?
+  images       String[]  @default([])
+  category     String
+  brand        String    @default("SnapShop")
+  sizes        String[]  @default([])
+  colors       String[]  @default([])
+  stock        Int       @default(0)
+  ratings      Float     @default(5)
+  reviewsCount Int       @default(0)
+  isFeatured   Boolean   @default(false)
+  isOnSale     Boolean   @default(false)
+  isAvailable  Boolean   @default(true)
+  reviews      Json      @default("[]")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Order {
+  id             String    @id @default(uuid()) @map("_id")
+  customer       Json
+  items          Json
+  subtotal       Float
+  shippingCost   Float
+  promoCode      String?
+  discountAmount Float     @default(0)
+  total          Float
+  orderStatus    String    @default("pending")
+  paymentStatus  String    @default("unpaid")
+  paymentMethod  String    @default("COD")
+  isAdminSeen    Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Address {
+  id        String    @id @default(uuid()) @map("_id")
+  userId    String
+  label     String    @default("Home")
+  fullName  String    @default("")
+  street    String    @default("")
+  city      String    @default("")
+  state     String    @default("")
+  zip       String    @default("")
+  country   String    @default("")
+  phone     String    @default("")
+  isDefault Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model BlogPost {
+  id        String    @id @default(uuid()) @map("_id")
+  title     String
+  slug      String    @unique
+  content   String
+  thumbnail String    @default("")
+  author    String    @default("Admin")
+  published Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Brand {
+  id        String    @id @default(uuid()) @map("_id")
+  name      String
+  slug      String    @unique
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Bundle {
+  id         String    @id @default(uuid()) @map("_id")
+  name       String
+  discount   Float
+  itemsCount Int       @default(2)
+  status     String    @default("Active")
+  price      Float     @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Category {
+  id        String    @id @default(uuid()) @map("_id")
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Collection {
+  id        String    @id @default(uuid()) @map("_id")
+  name      String
+  slug      String    @unique
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Color {
+  id        String    @id @default(uuid()) @map("_id")
+  name      String
+  hex       String
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model ContactMessage {
+  id        String    @id @default(uuid()) @map("_id")
+  name      String
+  email     String
+  subject   String?
+  message   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Coupon {
+  id            String    @id @default(uuid()) @map("_id")
+  code          String    @unique
+  discountType  String    @default("percentage")
+  discountValue Float
+  expiryDate    DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model CustomPage {
+  id        String    @id @default(uuid()) @map("_id")
+  title     String
+  slug      String    @unique
+  content   String
+  published Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model License {
+  id            String    @id @default(uuid()) @map("_id")
+  purchaseCode  String
+  licenseKey    String
+  domain        String
+  buyerUsername String    @default("")
+  itemName      String    @default("SnapShop")
+  status        String    @default("active")
+  activatedAt   DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ProductTemplate {
+  id         String    @id @default(uuid()) @map("_id")
+  name       String
+  attributes String[]  @default([])
+  usage      Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model ShippingMethod {
+  id           String    @id @default(uuid()) @map("_id")
+  name         String
+  cost         Float     @default(0)
+  deliveryTime String    @default("3-5 business days")
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Size {
+  id        String    @id @default(uuid()) @map("_id")
+  label     String
+  name      String
+  category  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Translation {
+  id           String    @id @default(uuid()) @map("_id")
+  key          String    @unique
+  translations Json      @default("{}")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model GeneralSettings {
+  id                String    @id @default(uuid()) @map("_id")
+  storeName         String    @default("SnapShop")
+  storeEmail        String    @default("contact@snapshop.com")
+  websiteLink       String    @default("snapshop.gadohost.com")
+  logoUrl           String    @default("")
+  faviconUrl        String    @default("")
+  currency          String    @default("$")
+  shippingCost      Float     @default(0)
+  promoCode         String    @default("WELCOME10")
+  promoDiscount     Float     @default(10)
+  heroTitle         String    @default("Discover Your Style")
+  heroSubtitle      String    @default("Explore our latest collection of premium fashion designed for the modern woman.")
+  heroImageUrl      String    @default("/hero_fashion_girl.jpg")
+  heroCountdownDate DateTime?
+  storeCountry      String    @default("Morocco")
+  activeZones       String[]  @default(["Worldwide"])
+  shippingPolicy    String    @default("We offer fast and reliable shipping to all locations. Orders are typically processed within 1-2 business days and delivered within 3-5 business days.")
+  returnsPolicy     String    @default("We offer a 30-day return policy. Items must be unworn, unwashed, and in original packaging with tags attached.")
+  sizeGuideContent  String    @default("How to Measure:\n- Bust/Chest: Measure around the fullest part of your bust, keeping the tape level.\n- Waist: Measure around your natural waistline, which is the narrowest part of your waist.\n- Hips: Measure around the fullest part of your hips, approximately 7-8 inches below your waist.")
+  productUrlFormat  String    @default("slug")
+  footerAbout       String    @default("Explore our latest collection of premium fashion designed for the modern woman.")
+  footerEmail       String    @default("support@snapshop.com")
+  footerPhone       String    @default("+1 (234) 567-890")
+  footerAddress     String    @default("123 Fashion Blvd, NY")
+  footerCopyright   String    @default("SnapShop. All rights reserved.")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model ThemeSettings {
+  id            String    @id @default(uuid()) @map("_id")
+  selectedTheme String    @default("light")
+  primaryColor  String    @default("#d31e28")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model LanguageSettings {
+  id              String    @id @default(uuid()) @map("_id")
+  defaultLanguage String    @default("en")
+  languages       Json      @default("[{\"code\":\"en\",\"name\":\"English\",\"nativeName\":\"English\",\"flag\":\"/images/flags/us.svg\",\"isActive\":true,\"isDefault\":true}]")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model CurrencySettings {
+  id          String    @id @default(uuid()) @map("_id")
+  currency    String    @default("$")
+  currencyPos String    @default("before")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model TaxSettings {
+  id        String    @id @default(uuid()) @map("_id")
+  vatRate   Float     @default(20)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model PaymentSettings {
+  id                 String    @id @default(uuid()) @map("_id")
+  enableCod          Boolean   @default(true)
+  enableStripe       Boolean   @default(true)
+  stripeMode         String    @default("sandbox")
+  stripePubKey       String    @default("pk_test_mock_keys_12345")
+  stripeSecretKey    String    @default("sk_test_mock_keys_54321")
+  enableRazorpay     Boolean   @default(false)
+  razorpayMode       String    @default("sandbox")
+  razorpayKeyId      String    @default("rzp_test_mock_keys_123")
+  razorpayKeySecret  String    @default("rzp_sec_mock_keys_456")
+  enablePaypal       Boolean   @default(false)
+  paypalMode         String    @default("sandbox")
+  paypalClientId     String    @default("paypal_client_mock_123")
+  paypalClientSecret String    @default("paypal_secret_mock_456")
+  codLogo            String    @default("")
+  stripeLogo         String    @default("")
+  razorpayLogo       String    @default("")
+  paypalLogo         String    @default("")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model StorageSettings {
+  id                    String    @id @default(uuid()) @map("_id")
+  activeStorageProvider String    @default("local")
+  doEndpoint            String    @default("nyc3.digitaloceanspaces.com")
+  doRegion              String    @default("nyc3")
+  doKey                 String    @default("")
+  doSecret              String    @default("")
+  doBucket              String    @default("snapshop-spaces")
+  s3Bucket              String    @default("snapshop-bucket")
+  s3Region              String    @default("us-east-1")
+  s3Key                 String    @default("")
+  s3Secret              String    @default("")
+  gcsBucket             String    @default("snapshop-gcs")
+  gcsKey                String    @default("")
+  gcsSecret             String    @default("")
+  b2Bucket              String    @default("snapshop-b2")
+  b2Endpoint            String    @default("s3.us-west-004.backblazeb2.com")
+  b2KeyId               String    @default("")
+  b2Key                 String    @default("")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model MobileSettings {
+  id                    String    @id @default(uuid()) @map("_id")
+  mobileAppName         String    @default("SnapShop")
+  webViewUrl            String    @default("http://10.0.2.2:3000")
+  privacyPolicyLink     String    @default("domain.com")
+  termsOfServiceLink    String    @default("domain.com")
+  rateUsLink            String    @default("domain.com")
+  forceUpdate           Boolean   @default(false)
+  updateLink            String    @default("domain.com")
+  targetVersionCode     Int       @default(1)
+  enableGooglePlay      Boolean   @default(true)
+  apiBaseUrl            String    @default("localhost/api/mobile/v1")
+  apiAccessKey          String    @default("snap_ak_jq1gdg3frymuzt5z")
+  adsProvider           String    @default("Google AdMob")
+  admobAppId            String    @default("ca-app-pub-3940256099942544~3347511713")
+  bannerAdEnabled       Boolean   @default(true)
+  bannerAdUnitId        String    @default("ca-app-pub-3940256099942544/6300978111")
+  interstitialAdEnabled Boolean   @default(false)
+  interstitialAdUnitId  String    @default("ca-app-pub-3940256099942544/1033173712")
+  rewardedAdEnabled     Boolean   @default(true)
+  rewardedAdUnitId      String    @default("ca-app-pub-3940256099942544/5224354917")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model AiSettings {
+  id             String    @id @default(uuid()) @map("_id")
+  activeProvider String    @default("gemini")
+  openaiKey      String    @default("")
+  groqKey        String    @default("")
+  geminiKey      String    @default("")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model AuthSettings {
+  id             String    @id @default(uuid()) @map("_id")
+  enableEmail    Boolean   @default(true)
+  enablePhone    Boolean   @default(false)
+  enableGoogle   Boolean   @default(false)
+  enableFacebook Boolean   @default(false)
+  enableApple    Boolean   @default(false)
+  firebaseConfig String    @default("")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model EmailSettings {
+  id                        String    @id @default(uuid()) @map("_id")
+  mailMethod                String    @default("smtp")
+  smtpHost                  String    @default("")
+  smtpPort                  Int       @default(587)
+  smtpUser                  String    @default("")
+  smtpPass                  String    @default("")
+  fromEmail                 String    @default("noreply@snapshop.com")
+  fromName                  String    @default("SnapShop")
+  encryption                String    @default("tls")
+  welcomeEmailTemplate      String    @default("")
+  orderConfirmationTemplate String    @default("")
+  orderProcessingTemplate   String    @default("")
+  orderShippedTemplate      String    @default("")
+  orderDeliveredTemplate    String    @default("")
+  orderCancelledTemplate    String    @default("")
+  passwordResetTemplate     String    @default("")
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}
