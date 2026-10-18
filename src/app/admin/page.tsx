@@ -178,6 +178,38 @@ export default async function AdminDashboard() {
           background: linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #10b981 100%);
         }
 
+        .dashboard-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 20px;
+          width: 100%;
+        }
+
+        @media (max-width: 1200px) {
+          .dashboard-stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .dashboard-stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        .dashboard-charts-grid {
+          display: grid;
+          grid-template-columns: 1.6fr 1fr;
+          gap: 24px;
+          width: 100%;
+        }
+
+        @media (max-width: 1024px) {
+          .dashboard-charts-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
         .modern-stat-card {
           background-color: #ffffff;
           border-radius: 20px;
@@ -189,6 +221,9 @@ export default async function AdminDashboard() {
           position: relative;
           overflow: hidden;
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
         }
 
         .modern-stat-card:hover {
@@ -320,7 +355,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Redesigned 4-Column Stat Cards Grid */}
-      <div style={styles.statsGrid}>
+      <div className="dashboard-stats-grid" style={styles.statsGrid}>
         {/* Card 1: Gross Revenue */}
         <div className="modern-stat-card">
           <div style={styles.cardHeader}>
@@ -637,7 +672,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Main Grid: Chart & Insights Panels */}
-      <div style={styles.chartsGrid}>
+      <div className="dashboard-charts-grid" style={styles.chartsGrid}>
         {/* Left Column: Column Chart */}
         <div style={styles.chartCard}>
           <div style={styles.chartHeader}>
@@ -914,8 +949,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
     gap: "20px",
+    width: "100%",
   },
   cardHeader: {
     display: "flex",
