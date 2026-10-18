@@ -9,6 +9,7 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryImage, setCategoryImage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -48,7 +49,10 @@ export default function AdminCategoriesPage() {
       const res = await fetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCategoryName.trim() }),
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          image: categoryImage.trim() || undefined
+        }),
       });
 
       const data = await res.json();
@@ -58,6 +62,7 @@ export default function AdminCategoriesPage() {
 
       setSuccessMsg(`Category "${data.name}" added successfully!`);
       setNewCategoryName("");
+      setCategoryImage("");
       fetchCategories();
 
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -144,6 +149,27 @@ export default function AdminCategoriesPage() {
               />
             </div>
 
+            <div style={styles.inputGroup}>
+              <label style={styles.inputLabel}>Category Image URL</label>
+              <input
+                type="text"
+                placeholder="e.g. https://... or /images/..."
+                value={categoryImage}
+                onChange={(e) => setCategoryImage(e.target.value)}
+                style={styles.textInput}
+              />
+              {categoryImage && (
+                <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "10px" }}>
+                  <img
+                    src={categoryImage}
+                    alt="Preview"
+                    style={{ width: "42px", height: "42px", borderRadius: "50%", objectFit: "cover", border: "1px solid #e2e8f0" }}
+                  />
+                  <span style={{ fontSize: "12px", color: "#64748b" }}>Image Preview</span>
+                </div>
+              )}
+            </div>
+
             <button type="submit" disabled={submitting} style={styles.btn}>
               {submitting ? (
                 <>
@@ -191,7 +217,23 @@ export default function AdminCategoriesPage() {
               {filteredCategories.map((cat) => (
                 <div key={cat._id} style={styles.row}>
                   <div style={styles.rowInfo}>
-                    <div style={styles.folderIcon}>📁</div>
+                    {cat.image ? (
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
+                        style={{
+                          width: "42px",
+                          height: "42px",
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                          border: "1px solid #e2e8f0",
+                          marginRight: "12px",
+                          flexShrink: 0
+                        }}
+                      />
+                    ) : (
+                      <div style={styles.folderIcon}>📁</div>
+                    )}
                     <div>
                       <div style={styles.catName}>{cat.name}</div>
                       <div style={styles.catSlug}>slug: /{cat.slug}</div>

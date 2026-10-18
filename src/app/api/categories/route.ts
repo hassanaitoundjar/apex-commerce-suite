@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     await dbConnect();
-    const { name } = await req.json();
+    const { name, image } = await req.json();
 
     if (!name) {
       return NextResponse.json({ error: "Category name is required" }, { status: 400 });
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Category already exists" }, { status: 400 });
     }
 
-    const category = await Category.create({ name, slug });
+    const category = await Category.create({ name, slug, image: image?.trim() || null });
     return NextResponse.json(category, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed to create category" }, { status: 500 });

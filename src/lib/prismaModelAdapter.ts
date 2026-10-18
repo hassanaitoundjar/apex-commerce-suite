@@ -129,12 +129,17 @@ export function sortToPrismaOrderBy(sort: any): any {
     return { [field === "_id" ? "id" : field]: isDesc ? "desc" : "asc" };
   }
   if (typeof sort === "object") {
-    const orderBy: any = {};
-    for (const [k, v] of Object.entries(sort)) {
+    const entries = Object.entries(sort);
+    if (entries.length <= 1) {
+      if (entries.length === 0) return undefined;
+      const [k, v] = entries[0];
       const field = k === "_id" ? "id" : k;
-      orderBy[field] = v === -1 || v === "desc" ? "desc" : "asc";
+      return { [field]: v === -1 || v === "desc" ? "desc" : "asc" };
     }
-    return orderBy;
+    return entries.map(([k, v]) => {
+      const field = k === "_id" ? "id" : k;
+      return { [field]: v === -1 || v === "desc" ? "desc" : "asc" };
+    });
   }
   return undefined;
 }
