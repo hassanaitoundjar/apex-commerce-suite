@@ -8,6 +8,7 @@ import Category from "@/models/Category";
 import { getSettings } from "@/lib/settings";
 import Countdown from "@/components/Countdown";
 import { Star, ShieldCheck, Truck, RotateCcw } from "lucide-react";
+import BestSellersSection from "@/components/home/BestSellersSection";
 
 import Translation from "@/models/Translation";
 
@@ -19,6 +20,7 @@ async function getHomeData() {
     const featuredProducts = await Product.find({ isFeatured: true, isAvailable: true }).limit(8);
     const popularProducts = await Product.find({ isAvailable: true }).sort({ ratings: -1, reviewsCount: -1 }).limit(8);
     const newArrivals = await Product.find({ isAvailable: true }).sort({ createdAt: -1 }).limit(8);
+    const allProducts = await Product.find({ isAvailable: true }).sort({ ratings: -1, reviewsCount: -1 }).limit(30);
     const categoriesRaw = await Category.find({});
 
     const categories = [];
@@ -42,6 +44,7 @@ async function getHomeData() {
       featuredProducts: JSON.parse(JSON.stringify(featuredProducts)),
       popularProducts: JSON.parse(JSON.stringify(popularProducts)),
       newArrivals: JSON.parse(JSON.stringify(newArrivals)),
+      allProducts: JSON.parse(JSON.stringify(allProducts)),
       categories: JSON.parse(JSON.stringify(categories)),
     };
   } catch (e) {
@@ -57,6 +60,7 @@ async function getHomeData() {
       featuredProducts: [],
       popularProducts: [],
       newArrivals: [],
+      allProducts: [],
       categories: [],
     };
   }
@@ -64,7 +68,7 @@ async function getHomeData() {
 
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
-  const { settings, featuredProducts, popularProducts, newArrivals, categories } = await getHomeData();
+  const { settings, featuredProducts, popularProducts, newArrivals, allProducts, categories } = await getHomeData();
 
   // Load translations matching current locale
   const translationsRaw = await Translation.find({});
@@ -96,8 +100,6 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     }
     return `/${lang}/product/${p._id}`;
   };
-
-  const allProducts = [...featuredProducts, ...popularProducts, ...newArrivals];
 
   const renderProductCard = (product: any) => {
     const isBestSeller = product.ratings >= 4.5 && product.reviewsCount >= 3;
@@ -138,11 +140,15 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
           <div className="price-row-custom">
             <span className="price-current">
-              {settings.currency}{product.price.toFixed(2)}
+              {settings.currency === "MAD" || settings.currencyPos === "after"
+                ? `${product.price.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${settings.currency}`
+                : `${settings.currency}${product.price.toFixed(2)}`}
             </span>
             {product.isOnSale && product.salePrice && (
               <span className="price-old">
-                {settings.currency}{product.salePrice.toFixed(2)}
+                {settings.currency === "MAD" || settings.currencyPos === "after"
+                  ? `${product.salePrice.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${settings.currency}`
+                  : `${settings.currency}${product.salePrice.toFixed(2)}`}
               </span>
             )}
           </div>
@@ -533,43 +539,15 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         </section>
       )}
 
-      {/* Featured Collection Section */}
-      {featuredProducts.length > 0 && (
-        <section className="custom-section">
-          <div className="container">
-            <div style={styles.sectionHeader}>
-              <h2 className="section-title-custom" style={{ margin: 0 }}>{t("Featured Collection")}</h2>
-              <Link href={`/${lang}/shop`} style={styles.viewAllLink}>
-                {t("View All Products")} &rarr;
-              </Link>
-            </div>
-
-            <div className="product-grid-custom">
-              {featuredProducts.map(renderProductCard)}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 3. Popular This Week Section */}
-      <section className="custom-section">
-        <div className="container">
-          <div className="section-title-wrap">
-            <h2 className="section-title-custom">{t("Popular This Week")}</h2>
-            <p className="section-subtitle-custom">{t("Top trending styles loved by our customers this week")}</p>
-          </div>
-
-          {popularProducts.length === 0 ? (
-            <div style={styles.emptyState}>
-              <p>{t("No products found.")}</p>
-            </div>
-          ) : (
-            <div className="product-grid-custom">
-              {popularProducts.map(renderProductCard)}
-            </div>
-          )}
-        </div>
-      </section>
+      {/* 2. Meilleures Ventes de la Semaine (Best Sellers 5-Column Grid with Category Tabs) */}
+      <BestSellersSection
+        products={allProducts && allProducts.length > 0 ? allProducts : [...featuredProducts, ...popularProducts]}
+        categories={categories}
+        currency={settings.currency || "MAD"}
+        lang={lang}
+        productUrlFormat={settings.productUrlFormat}
+        title={t("Meilleures ventes de la semaine") || "Meilleures ventes de la semaine"}
+      />
 
       {/* 4. New Arrivals Section */}
       <section className="custom-section custom-section-bg">
