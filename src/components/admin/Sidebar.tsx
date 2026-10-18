@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  BookOpen,
   X
 } from "lucide-react";
 
@@ -173,7 +174,8 @@ export default function Sidebar({
       title: "Core",
       items: [
         { key: "dashboard", label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-        { key: "mailbox", label: "Mailbox", href: "/admin/mailbox", icon: Mail }
+        { key: "mailbox", label: "Mailbox", href: "/admin/mailbox", icon: Mail },
+        { key: "docs", label: "Tutorial & Docs", href: "/admin/docs", icon: BookOpen }
       ]
     },
     {
@@ -261,7 +263,7 @@ export default function Sidebar({
 
   const isItemAllowed = (itemKey: string) => {
     if (isSuperAdmin) return true;
-    if (itemKey === "dashboard") return true;
+    if (itemKey === "dashboard" || itemKey === "docs") return true;
     if (user) {
       return userPermissions.includes(itemKey);
     }

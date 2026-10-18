@@ -21,7 +21,11 @@ import {
   Calendar,
   ShieldCheck,
   Clock,
-  Package
+  Package,
+  ShoppingBag,
+  BookOpen,
+  Download,
+  Sparkles
 } from "lucide-react";
 
 async function getDashboardStats() {
@@ -328,6 +332,28 @@ export default async function AdminDashboard() {
             <Calendar size={15} color="#6366f1" />
             <span>{todayDate}</span>
           </div>
+
+          <Link
+            href="/admin/docs"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #cbd5e1",
+              color: "#334155",
+              padding: "9px 16px",
+              borderRadius: "12px",
+              fontSize: "13px",
+              fontWeight: "600",
+              textDecoration: "none",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <BookOpen size={15} color="#4f46e5" />
+            <span>Tutorial & Guide</span>
+          </Link>
 
           <Link
             href="/admin/products"
@@ -934,6 +960,191 @@ export default async function AdminDashboard() {
               <span style={styles.insightCountBadgeGreen}>{stats.activeCoupons}</span>
             </Link>
           </div>
+        </div>
+      </div>
+
+      {/* Tutorial & Operations Manual Section */}
+      <div style={{
+        backgroundColor: "#ffffff",
+        borderRadius: "20px",
+        padding: "28px 32px",
+        boxShadow: "0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02)",
+        border: "1px solid #e2e8f0",
+        position: "relative",
+        overflow: "hidden"
+      }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "16px",
+          marginBottom: "24px"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <div style={{
+              width: "44px",
+              height: "44px",
+              borderRadius: "12px",
+              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.14) 0%, rgba(79, 70, 229, 0.06) 100%)",
+              border: "1px solid rgba(99, 102, 241, 0.2)",
+              color: "#4f46e5",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 4px 12px rgba(99, 102, 241, 0.1)"
+            }}>
+              <BookOpen size={22} />
+            </div>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <h3 style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a", margin: 0 }}>
+                  Store Operations & Tutorial Center
+                </h3>
+                <span style={{
+                  backgroundColor: "rgba(16, 185, 129, 0.1)",
+                  color: "#059669",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  padding: "2px 8px",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(16, 185, 129, 0.2)"
+                }}>
+                  Official Guide
+                </span>
+              </div>
+              <p style={{ fontSize: "12.5px", color: "#64748b", margin: "4px 0 0 0" }}>
+                Learn how to import products from AliExpress, issue financial refunds, process restocking returns, and manage staff permissions.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <a
+              href="/docs/APEX_COMMERCE_TUTORIAL_GUIDE.md"
+              download="APEX_COMMERCE_TUTORIAL_GUIDE.md"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                backgroundColor: "#f8fafc",
+                border: "1px solid #cbd5e1",
+                color: "#334155",
+                padding: "8px 16px",
+                borderRadius: "10px",
+                fontSize: "12.5px",
+                fontWeight: "600",
+                textDecoration: "none",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
+              }}
+            >
+              <Download size={14} />
+              <span>Download Guide (.md)</span>
+            </a>
+
+            <Link
+              href="/admin/docs"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)",
+                color: "#ffffff",
+                padding: "8px 18px",
+                borderRadius: "10px",
+                fontSize: "12.5px",
+                fontWeight: "700",
+                textDecoration: "none",
+                boxShadow: "0 4px 12px rgba(79, 70, 229, 0.3)"
+              }}
+            >
+              <span>Explore Tutorial Hub</span>
+              <ArrowUpRight size={14} />
+            </Link>
+          </div>
+        </div>
+
+        {/* 4 Quick Jump Cards */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+          gap: "16px"
+        }}>
+          {[
+            {
+              title: "15-Min Store Launch",
+              desc: "Configure brand identity, currencies, payment gateways, and shipping zones.",
+              icon: Sparkles,
+              color: "#6366f1",
+              bg: "rgba(99, 102, 241, 0.08)",
+              href: "/admin/docs"
+            },
+            {
+              title: "AliExpress Importer & Bundles",
+              desc: "1-click product scraping from AliExpress and creating multi-item bundle deals.",
+              icon: ShoppingBag,
+              color: "#ec4899",
+              bg: "rgba(236, 72, 153, 0.08)",
+              href: "/admin/docs"
+            },
+            {
+              title: "Refunds & Restock Returns",
+              desc: "Financial reversals, warehouse inspections, and automatic inventory replenishment.",
+              icon: ShoppingCart,
+              color: "#10b981",
+              bg: "rgba(16, 185, 129, 0.08)",
+              href: "/admin/docs"
+            },
+            {
+              title: "Staff RBAC & Gateways",
+              desc: "Granular route authorization, Stripe/PayPal webhooks, and database backup restore.",
+              icon: ShieldCheck,
+              color: "#f59e0b",
+              bg: "rgba(245, 158, 11, 0.08)",
+              href: "/admin/docs"
+            }
+          ].map((item, idx) => {
+            const IconComponent = item.icon;
+            return (
+              <Link
+                key={idx}
+                href={item.href}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  padding: "18px",
+                  borderRadius: "14px",
+                  backgroundColor: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  textDecoration: "none",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                <div style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "10px",
+                  backgroundColor: item.bg,
+                  color: item.color,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "12px"
+                }}>
+                  <IconComponent size={18} />
+                </div>
+                <h4 style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a", margin: "0 0 6px 0", textAlign: "left" }}>
+                  {item.title}
+                </h4>
+                <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 12px 0", lineHeight: "1.5", textAlign: "left" }}>
+                  {item.desc}
+                </p>
+                <span style={{ marginTop: "auto", fontSize: "11.5px", fontWeight: "700", color: item.color, textAlign: "left", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                  Open Tutorial <ArrowUpRight size={12} />
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>
