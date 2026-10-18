@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { DollarSign, RotateCcw, TrendingUp, Search, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Customer {
   name: string;
@@ -26,7 +27,9 @@ interface RefundsClientProps {
 export default function RefundsClient({ initialOrders, currency }: RefundsClientProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [searchQuery, setSearchQuery] = useState("");
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [refundTarget, setRefundTarget] = useState<Order | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [feedbackModal, setFeedbackModal] = useState<{ title: string; message: string; variant: "danger" | "success" } | null>(null);
 
   // Statistics
   const totalPaid = orders
@@ -39,14 +42,12 @@ export default function RefundsClient({ initialOrders, currency }: RefundsClient
 
   const refundCount = orders.filter(o => o.paymentStatus === "refunded").length;
 
-  const handleRefund = async (id: string) => {
-    if (!window.confirm("Are you sure you want to refund this order? This action will set the payment status to 'refunded' and is irreversible.")) {
-      return;
-    }
+  const handleConfirmRefund = async () => {
+    if (!refundTarget) return;
 
-    setLoadingId(id);
+    setProcessing(true);
     try {
-      const res = await fetch(`/api/orders/${id}`, {
+      const res = await fetch(`/api/orders/${refundTarget._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paymentStatus: "refunded" }),
@@ -54,11 +55,23 @@ export default function RefundsClient({ initialOrders, currency }: RefundsClient
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to issue refund");
 
-      setOrders(orders.map(o => o._id === id ? data : o));
+      setOrders(orders.map(o => o._id === refundTarget._id ? data : o));
+      const targetId = refundTarget._id;
+      setRefundTarget(null);
+      setFeedbackModal({
+        title: "Refund Processed",
+        message: `Order #${targetId.slice(-6)} has been successfully refunded.`,
+        variant: "success",
+      });
     } catch (err: any) {
-      alert(err.message || "Failed to process refund");
+      setRefundTarget(null);
+      setFeedbackModal({
+        title: "Refund Failed",
+        message: err.message || "Failed to process refund",
+        variant: "danger",
+      });
     } finally {
-      setLoadingId(null);
+      setProcessing(false);
     }
   };
 
@@ -181,15 +194,10 @@ export default function RefundsClient({ initialOrders, currency }: RefundsClient
                       </div>
                     ) : (
                       <button
-                        onClick={() => handleRefund(order._id)}
-                        disabled={loadingId === order._id}
+                        onClick={() => setRefundTarget(order)}
                         style={styles.refundBtn}
                       >
-                        {loadingId === order._id ? (
-                          <Loader2 size={14} className="animate-spin" style={{ marginRight: 6 }} />
-                        ) : (
-                          <RotateCcw size={14} style={{ marginRight: 6 }} />
-                        )}
+                        <RotateCcw size={14} style={{ marginRight: 6 }} />
                         Issue Refund
                       </button>
                     )}
@@ -200,6 +208,37 @@ export default function RefundsClient({ initialOrders, currency }: RefundsClient
           </table>
         )}
       </div>
+
+      {/* Refund Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!refundTarget}
+        title="Issue Order Refund"
+        message={
+          <span>
+            Are you sure you want to refund order <strong>#{refundTarget?._id.slice(-6)}</strong> for <strong>{currency}{refundTarget?.total.toFixed(2)}</strong>? This will set payment status to refunded and is irreversible.
+          </span>
+        }
+        confirmText="Confirm Refund"
+        cancelText="Cancel"
+        variant="warning"
+        isLoading={processing}
+        loadingText="Processing Refund..."
+        onConfirm={handleConfirmRefund}
+        onClose={() => {
+          if (!processing) setRefundTarget(null);
+        }}
+      />
+
+      {/* Feedback Modal */}
+      <ConfirmModal
+        isOpen={!!feedbackModal}
+        title={feedbackModal?.title || ""}
+        message={feedbackModal?.message || ""}
+        confirmText="OK"
+        showCancelButton={false}
+        variant={feedbackModal?.variant || "info"}
+        onClose={() => setFeedbackModal(null)}
+      />
     </div>
   );
 }

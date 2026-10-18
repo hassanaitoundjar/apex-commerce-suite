@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { RotateCcw, Package, HelpCircle, Search, AlertCircle, CheckCircle2, Loader2, ArrowLeftRight } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Customer {
   name: string;
@@ -34,7 +35,9 @@ interface ReturnsClientProps {
 export default function ReturnsClient({ initialOrders, currency }: ReturnsClientProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [searchQuery, setSearchQuery] = useState("");
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [returnTarget, setReturnTarget] = useState<Order | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [feedbackModal, setFeedbackModal] = useState<{ title: string; message: string; variant: "danger" | "success" } | null>(null);
 
   // Stats
   const activeDeliveredCount = orders.filter(o => o.orderStatus === "delivered").length;
@@ -43,14 +46,12 @@ export default function ReturnsClient({ initialOrders, currency }: ReturnsClient
     .filter(o => o.orderStatus === "returned")
     .reduce((sum, o) => sum + o.items.reduce((itemSum, i) => itemSum + i.quantity, 0), 0);
 
-  const handleApproveReturn = async (id: string) => {
-    if (!window.confirm("Approve return for this order? This will restock all item quantities back to the product database.")) {
-      return;
-    }
+  const handleConfirmReturn = async () => {
+    if (!returnTarget) return;
 
-    setLoadingId(id);
+    setProcessing(true);
     try {
-      const res = await fetch(`/api/orders/${id}`, {
+      const res = await fetch(`/api/orders/${returnTarget._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderStatus: "returned" }),
@@ -58,11 +59,23 @@ export default function ReturnsClient({ initialOrders, currency }: ReturnsClient
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update return status");
 
-      setOrders(orders.map(o => o._id === id ? data : o));
+      setOrders(orders.map(o => o._id === returnTarget._id ? data : o));
+      const targetId = returnTarget._id;
+      setReturnTarget(null);
+      setFeedbackModal({
+        title: "Return Approved",
+        message: `Order #${targetId.slice(-6)} has been approved and its items restocked to inventory.`,
+        variant: "success",
+      });
     } catch (err: any) {
-      alert(err.message || "Failed to process return");
+      setReturnTarget(null);
+      setFeedbackModal({
+        title: "Return Failed",
+        message: err.message || "Failed to process return",
+        variant: "danger",
+      });
     } finally {
-      setLoadingId(null);
+      setProcessing(false);
     }
   };
 
@@ -189,15 +202,10 @@ export default function ReturnsClient({ initialOrders, currency }: ReturnsClient
                       <div style={styles.cancelledState}>Cancelled</div>
                     ) : (
                       <button
-                        onClick={() => handleApproveReturn(order._id)}
-                        disabled={loadingId === order._id}
+                        onClick={() => setReturnTarget(order)}
                         style={styles.approveBtn}
                       >
-                        {loadingId === order._id ? (
-                          <Loader2 size={14} className="animate-spin" style={{ marginRight: 6 }} />
-                        ) : (
-                          <RotateCcw size={14} style={{ marginRight: 6 }} />
-                        )}
+                        <RotateCcw size={14} style={{ marginRight: 6 }} />
                         Approve Return
                       </button>
                     )}
@@ -208,6 +216,37 @@ export default function ReturnsClient({ initialOrders, currency }: ReturnsClient
           </table>
         )}
       </div>
+
+      {/* Return Approval Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!returnTarget}
+        title="Approve Order Return"
+        message={
+          <span>
+            Approve return for order <strong>#{returnTarget?._id.slice(-6)}</strong>? This will restock all item quantities back to the product database.
+          </span>
+        }
+        confirmText="Approve Return"
+        cancelText="Cancel"
+        variant="warning"
+        isLoading={processing}
+        loadingText="Restocking Items..."
+        onConfirm={handleConfirmReturn}
+        onClose={() => {
+          if (!processing) setReturnTarget(null);
+        }}
+      />
+
+      {/* Feedback Modal */}
+      <ConfirmModal
+        isOpen={!!feedbackModal}
+        title={feedbackModal?.title || ""}
+        message={feedbackModal?.message || ""}
+        confirmText="OK"
+        showCancelButton={false}
+        variant={feedbackModal?.variant || "info"}
+        onClose={() => setFeedbackModal(null)}
+      />
     </div>
   );
 }

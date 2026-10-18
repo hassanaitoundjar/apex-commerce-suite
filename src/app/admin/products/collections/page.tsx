@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Sparkles, Library, Plus, Search, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 export default function AdminCollectionsPage() {
   const [collections, setCollections] = useState<any[]>([]);
@@ -9,6 +10,8 @@ export default function AdminCollectionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCollections = async () => {
     try {
@@ -22,7 +25,10 @@ export default function AdminCollectionsPage() {
   };
 
   useEffect(() => {
-    fetchCollections();
+    const timer = setTimeout(() => {
+      fetchCollections();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleAddCollection = async (e: React.FormEvent) => {
@@ -72,19 +78,23 @@ export default function AdminCollectionsPage() {
     }
   };
 
-  const deleteCollection = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this collection?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/products/collections/${id}`, {
+      const res = await fetch(`/api/admin/products/collections/${deleteTarget.id}`, {
         method: "DELETE"
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete collection");
 
-      setCollections(collections.filter(c => c._id !== id));
+      setCollections(collections.filter(c => c._id !== deleteTarget.id));
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Failed to delete collection");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -166,7 +176,7 @@ export default function AdminCollectionsPage() {
                     <button onClick={() => toggleCollection(c._id, c.active)} style={{ background: "none", border: "none", cursor: "pointer", color: c.active ? "#10b981" : "#94a3b8" }}>
                       {c.active ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
                     </button>
-                    <button onClick={() => deleteCollection(c._id)} style={styles.deleteBtn}>
+                    <button onClick={() => setDeleteTarget({ id: c._id, name: c.name })} style={styles.deleteBtn}>
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -176,6 +186,25 @@ export default function AdminCollectionsPage() {
           </div>
         </div>
       </div>
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Collection"
+        message={
+          <span>
+            Are you sure you want to delete collection <strong>&quot;{deleteTarget?.name}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Collection"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Eye, X } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Customer {
   name: string;
@@ -46,6 +47,7 @@ export default function OrdersClient({ initialOrders, currency }: OrdersClientPr
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
+  const [errorModal, setErrorModal] = useState<string | null>(null);
 
   const handleStatusChange = async (id: string, field: "orderStatus" | "paymentStatus", value: string) => {
     setLoading(id);
@@ -63,7 +65,7 @@ export default function OrdersClient({ initialOrders, currency }: OrdersClientPr
         setSelectedOrder(data);
       }
     } catch (err: any) {
-      alert(err.message || "Something went wrong");
+      setErrorModal(err.message || "Something went wrong while updating the order.");
     } finally {
       setLoading(null);
     }
@@ -232,6 +234,17 @@ export default function OrdersClient({ initialOrders, currency }: OrdersClientPr
           </div>
         </div>
       )}
+
+      {/* Error / Notice Modal */}
+      <ConfirmModal
+        isOpen={!!errorModal}
+        title="Update Failed"
+        message={errorModal || "Failed to update order status."}
+        confirmText="OK"
+        showCancelButton={false}
+        variant="danger"
+        onClose={() => setErrorModal(null)}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, ArrowLeft, Image as ImageIcon, Save, Check, RefreshCw, AlertTriangle, FileText, Globe, Eye, EyeOff } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface BlogPost {
   _id: string;
@@ -20,6 +21,8 @@ export default function BlogsDashboard() {
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Editor Panel state
   const [isEditing, setIsEditing] = useState(false);
@@ -51,7 +54,10 @@ export default function BlogsDashboard() {
   };
 
   useEffect(() => {
-    fetchPosts();
+    const timer = setTimeout(() => {
+      fetchPosts();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const openCreateForm = () => {
@@ -162,19 +168,23 @@ export default function BlogsDashboard() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this blog post?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
 
     try {
-      const res = await fetch(`/api/admin/blogs/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/blogs/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete post");
 
-      setPosts(prev => prev.filter(p => p._id !== id));
+      setPosts(prev => prev.filter(p => p._id !== deleteTarget.id));
       setSuccess("Post deleted successfully");
       setTimeout(() => setSuccess(""), 3000);
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Error deleting post");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -450,7 +460,7 @@ export default function BlogsDashboard() {
                             <Edit2 size={15} color="#3b82f6" />
                           </button>
                           <button
-                            onClick={() => handleDelete(post._id)}
+                            onClick={() => setDeleteTarget({ id: post._id, title: post.title })}
                             style={styles.deleteIconBtn}
                             title="Delete Post"
                           >
@@ -466,6 +476,25 @@ export default function BlogsDashboard() {
           )}
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Blog Post"
+        message={
+          <span>
+            Are you sure you want to delete post <strong>&quot;{deleteTarget?.title}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Post"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

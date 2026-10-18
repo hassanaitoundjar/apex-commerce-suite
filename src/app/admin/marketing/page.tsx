@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { PlusCircle, Trash2, Check, RefreshCw, AlertTriangle, Percent, DollarSign, Tag, ToggleLeft, ToggleRight, Calendar } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Coupon {
   _id: string;
@@ -19,6 +20,8 @@ export default function MarketingDashboard() {
   const [currency, setCurrency] = useState("$");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; code: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Form State
   const [code, setCode] = useState("");
@@ -50,7 +53,10 @@ export default function MarketingDashboard() {
   };
 
   useEffect(() => {
-    fetchCoupons();
+    const timer = setTimeout(() => {
+      fetchCoupons();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleCreateCoupon = async (e: React.FormEvent) => {
@@ -111,19 +117,23 @@ export default function MarketingDashboard() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this coupon?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
 
     try {
-      const res = await fetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/coupons/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete coupon");
 
-      setCoupons(prev => prev.filter(c => c._id !== id));
+      setCoupons(prev => prev.filter(c => c._id !== deleteTarget.id));
       setSuccess("Coupon code deleted successfully");
       setTimeout(() => setSuccess(""), 3000);
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Error deleting coupon");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -250,7 +260,7 @@ export default function MarketingDashboard() {
                               {c.isActive ? <ToggleRight size={26} color="#10b981" /> : <ToggleLeft size={26} color="#94a3b8" />}
                             </button>
                             <button
-                              onClick={() => handleDelete(c._id)}
+                              onClick={() => setDeleteTarget({ id: c._id, code: c.code })}
                               style={styles.deleteBtn}
                               title="Delete Code"
                             >
@@ -336,6 +346,25 @@ export default function MarketingDashboard() {
           </form>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Coupon"
+        message={
+          <span>
+            Are you sure you want to delete coupon code <strong>&quot;{deleteTarget?.code}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Coupon"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

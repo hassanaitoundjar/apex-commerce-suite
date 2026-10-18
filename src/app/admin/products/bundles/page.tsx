@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Sparkles, Layers, Plus, Tag, Search, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 export default function AdminBundlesPage() {
   const [bundles, setBundles] = useState<any[]>([]);
@@ -9,9 +10,14 @@ export default function AdminBundlesPage() {
   const [discountVal, setDiscountVal] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetchBundles();
+    const timer = setTimeout(() => {
+      fetchBundles();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const fetchBundles = async () => {
@@ -70,15 +76,19 @@ export default function AdminBundlesPage() {
     }
   };
 
-  const deleteBundle = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this bundle?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/bundles/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/bundles/${deleteTarget.id}`, { method: "DELETE" });
       if (res.ok) {
-        setBundles(bundles.filter(b => b._id !== id));
+        setBundles(bundles.filter(b => b._id !== deleteTarget.id));
+        setDeleteTarget(null);
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -164,7 +174,7 @@ export default function AdminBundlesPage() {
                   <button onClick={() => toggleBundle(b._id)} style={{ background: "none", border: "none", cursor: "pointer", color: b.status === "Active" ? "#10b981" : "#94a3b8" }}>
                     {b.status === "Active" ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
                   </button>
-                  <button onClick={() => deleteBundle(b._id)} style={styles.deleteBtn}>
+                  <button onClick={() => setDeleteTarget({ id: b._id, name: b.name })} style={styles.deleteBtn}>
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -173,6 +183,25 @@ export default function AdminBundlesPage() {
           </div>
         </div>
       </div>
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Bundle"
+        message={
+          <span>
+            Are you sure you want to delete bundle <strong>&quot;{deleteTarget?.name}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Bundle"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

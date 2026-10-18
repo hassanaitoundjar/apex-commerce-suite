@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, ArrowLeft, Save, Check, RefreshCw, AlertTriangle, FileCode, Globe, Eye, EyeOff, LayoutGrid } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface CustomPage {
   _id: string;
@@ -18,6 +19,8 @@ export default function PageManagementDashboard() {
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Form Panel states
   const [isEditing, setIsEditing] = useState(false);
@@ -46,7 +49,10 @@ export default function PageManagementDashboard() {
   };
 
   useEffect(() => {
-    fetchPages();
+    const timer = setTimeout(() => {
+      fetchPages();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const openCreateForm = () => {
@@ -125,19 +131,23 @@ export default function PageManagementDashboard() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this custom page?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
 
     try {
-      const res = await fetch(`/api/admin/pages/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/pages/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete page");
 
-      setPages(prev => prev.filter(p => p._id !== id));
+      setPages(prev => prev.filter(p => p._id !== deleteTarget.id));
       setSuccess("Page deleted successfully");
       setTimeout(() => setSuccess(""), 3000);
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Error deleting custom page");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -360,7 +370,7 @@ export default function PageManagementDashboard() {
                             <Edit2 size={15} color="#3b82f6" />
                           </button>
                           <button
-                            onClick={() => handleDelete(page._id)}
+                            onClick={() => setDeleteTarget({ id: page._id, title: page.title })}
                             style={styles.deleteIconBtn}
                             title="Delete Page"
                           >
@@ -376,6 +386,25 @@ export default function PageManagementDashboard() {
           )}
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Custom Page"
+        message={
+          <span>
+            Are you sure you want to delete page <strong>&quot;{deleteTarget?.title}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Page"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

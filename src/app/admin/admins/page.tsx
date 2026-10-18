@@ -334,7 +334,7 @@ export default function AdminsManagementPage() {
       setTimeout(() => setSuccessMsg(""), 4000);
       fetchAdmins();
     } catch (err: any) {
-      alert(err.message || "Failed to delete administrator");
+      setError(err.message || "Failed to delete administrator");
     } finally {
       setIsDeleting(false);
     }

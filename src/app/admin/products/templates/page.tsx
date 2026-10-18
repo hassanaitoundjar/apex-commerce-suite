@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, FileSpreadsheet, Plus, Copy, Search, Eye, Trash2 } from "lucide-react";
+import { Sparkles, FileSpreadsheet, Plus, Search, Trash2 } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 export default function AdminTemplatesPage() {
   const [templates, setTemplates] = useState<any[]>([]);
@@ -9,6 +10,8 @@ export default function AdminTemplatesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchTemplates = async () => {
     try {
@@ -22,7 +25,10 @@ export default function AdminTemplatesPage() {
   };
 
   useEffect(() => {
-    fetchTemplates();
+    const timer = setTimeout(() => {
+      fetchTemplates();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleAddTemplate = async (e: React.FormEvent) => {
@@ -54,19 +60,23 @@ export default function AdminTemplatesPage() {
     }
   };
 
-  const deleteTemplate = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this template?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/products/templates/${id}`, {
+      const res = await fetch(`/api/admin/products/templates/${deleteTarget.id}`, {
         method: "DELETE"
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete template");
 
-      setTemplates(templates.filter(t => t._id !== id));
+      setTemplates(templates.filter(t => t._id !== deleteTarget.id));
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Failed to delete template");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -146,7 +156,7 @@ export default function AdminTemplatesPage() {
                   </div>
                   <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                     <span style={styles.usageLabel}>{t.usage} Products linked</span>
-                    <button onClick={() => deleteTemplate(t._id)} style={{ ...styles.actionBtn, borderColor: "#fee2e2", color: "#ef4444" }} title="Delete Template">
+                    <button onClick={() => setDeleteTarget({ id: t._id, name: t.name })} style={{ ...styles.actionBtn, borderColor: "#fee2e2", color: "#ef4444" }} title="Delete Template">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -156,6 +166,25 @@ export default function AdminTemplatesPage() {
           </div>
         </div>
       </div>
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Template"
+        message={
+          <span>
+            Are you sure you want to delete template <strong>&quot;{deleteTarget?.name}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Template"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

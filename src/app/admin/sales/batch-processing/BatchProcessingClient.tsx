@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { CheckSquare, Square, Search, AlertCircle, Loader2, Play, CheckCircle2, ShieldAlert } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Customer {
   name: string;
@@ -29,6 +30,8 @@ export default function BatchProcessingClient({ initialOrders, currency }: Batch
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [confirmBatch, setConfirmBatch] = useState<{ field: "orderStatus" | "paymentStatus"; value: string } | null>(null);
+  const [feedbackModal, setFeedbackModal] = useState<{ title: string; message: string; variant: "danger" | "success" } | null>(null);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev =>
@@ -47,14 +50,11 @@ export default function BatchProcessingClient({ initialOrders, currency }: Batch
     }
   };
 
-  const handleBatchUpdate = async (field: "orderStatus" | "paymentStatus", value: string) => {
-    if (selectedIds.length === 0) return;
-
-    if (!window.confirm(`Are you sure you want to update ${selectedIds.length} orders?`)) {
-      return;
-    }
+  const handleExecuteBatch = async () => {
+    if (!confirmBatch || selectedIds.length === 0) return;
 
     setLoading(true);
+    const { field, value } = confirmBatch;
     try {
       const res = await fetch("/api/orders/batch", {
         method: "PUT",
@@ -73,9 +73,19 @@ export default function BatchProcessingClient({ initialOrders, currency }: Batch
       const updatedMap = new Map<string, Order>(data.orders.map((o: Order) => [o._id, o]));
       setOrders(orders.map(o => updatedMap.has(o._id) ? updatedMap.get(o._id)! : o));
       setSelectedIds([]);
-      alert(`Successfully updated ${data.count} orders!`);
+      setConfirmBatch(null);
+      setFeedbackModal({
+        title: "Batch Update Complete",
+        message: `Successfully updated ${data.count} orders to ${value.toUpperCase()}.`,
+        variant: "success",
+      });
     } catch (err: any) {
-      alert(err.message || "Failed to update orders");
+      setConfirmBatch(null);
+      setFeedbackModal({
+        title: "Batch Update Failed",
+        message: err.message || "Failed to update orders",
+        variant: "danger",
+      });
     } finally {
       setLoading(false);
     }
@@ -120,35 +130,35 @@ export default function BatchProcessingClient({ initialOrders, currency }: Batch
           {/* Order Status Bulk Actions */}
           <div style={styles.btnGroup}>
             <button
-              onClick={() => handleBatchUpdate("orderStatus", "processing")}
+              onClick={() => setConfirmBatch({ field: "orderStatus", value: "processing" })}
               disabled={selectedIds.length === 0 || loading}
               style={styles.actionBtn}
             >
               Mark Processing
             </button>
             <button
-              onClick={() => handleBatchUpdate("orderStatus", "shipped")}
+              onClick={() => setConfirmBatch({ field: "orderStatus", value: "shipped" })}
               disabled={selectedIds.length === 0 || loading}
               style={styles.actionBtn}
             >
               Mark Shipped
             </button>
             <button
-              onClick={() => handleBatchUpdate("orderStatus", "delivered")}
+              onClick={() => setConfirmBatch({ field: "orderStatus", value: "delivered" })}
               disabled={selectedIds.length === 0 || loading}
               style={styles.actionBtn}
             >
               Mark Delivered
             </button>
             <button
-              onClick={() => handleBatchUpdate("orderStatus", "returned")}
+              onClick={() => setConfirmBatch({ field: "orderStatus", value: "returned" })}
               disabled={selectedIds.length === 0 || loading}
               style={styles.actionBtn}
             >
               Mark Returned
             </button>
             <button
-              onClick={() => handleBatchUpdate("orderStatus", "cancelled")}
+              onClick={() => setConfirmBatch({ field: "orderStatus", value: "cancelled" })}
               disabled={selectedIds.length === 0 || loading}
               style={{ ...styles.actionBtn, backgroundColor: "#fef2f2", color: "#b91c1c", border: "1px solid #fee2e2" }}
             >
@@ -161,21 +171,21 @@ export default function BatchProcessingClient({ initialOrders, currency }: Batch
           {/* Payment Status Bulk Actions */}
           <div style={styles.btnGroup}>
             <button
-              onClick={() => handleBatchUpdate("paymentStatus", "paid")}
+              onClick={() => setConfirmBatch({ field: "paymentStatus", value: "paid" })}
               disabled={selectedIds.length === 0 || loading}
               style={{ ...styles.actionBtn, borderColor: "#cbd5e1" }}
             >
               Mark Paid
             </button>
             <button
-              onClick={() => handleBatchUpdate("paymentStatus", "unpaid")}
+              onClick={() => setConfirmBatch({ field: "paymentStatus", value: "unpaid" })}
               disabled={selectedIds.length === 0 || loading}
               style={{ ...styles.actionBtn, borderColor: "#cbd5e1" }}
             >
               Mark Unpaid
             </button>
             <button
-              onClick={() => handleBatchUpdate("paymentStatus", "refunded")}
+              onClick={() => setConfirmBatch({ field: "paymentStatus", value: "refunded" })}
               disabled={selectedIds.length === 0 || loading}
               style={{ ...styles.actionBtn, borderColor: "#cbd5e1" }}
             >
@@ -311,6 +321,38 @@ export default function BatchProcessingClient({ initialOrders, currency }: Batch
           </table>
         )}
       </div>
+
+      {/* Batch Action Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!confirmBatch}
+        title="Batch Update Orders"
+        message={
+          <span>
+            Are you sure you want to update <strong>{selectedIds.length}</strong> selected orders to{" "}
+            <strong>{confirmBatch?.value.toUpperCase()}</strong>?
+          </span>
+        }
+        confirmText="Update Orders"
+        cancelText="Cancel"
+        variant={confirmBatch?.value === "cancelled" ? "danger" : "primary"}
+        isLoading={loading}
+        loadingText="Updating Orders..."
+        onConfirm={handleExecuteBatch}
+        onClose={() => {
+          if (!loading) setConfirmBatch(null);
+        }}
+      />
+
+      {/* Feedback Modal */}
+      <ConfirmModal
+        isOpen={!!feedbackModal}
+        title={feedbackModal?.title || ""}
+        message={feedbackModal?.message || ""}
+        confirmText="OK"
+        showCancelButton={false}
+        variant={feedbackModal?.variant || "info"}
+        onClose={() => setFeedbackModal(null)}
+      />
     </div>
   );
 }

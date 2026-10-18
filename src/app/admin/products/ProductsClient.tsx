@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Edit, Trash, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import AliExpressImporter from "@/components/admin/AliExpressImporter";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Product {
   _id: string;
@@ -37,6 +38,8 @@ export default function ProductsClient({ initialProducts, categories, currency }
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   
   // Form fields
   const [name, setName] = useState("");
@@ -164,17 +167,21 @@ export default function ProductsClient({ initialProducts, categories, currency }
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
 
     try {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/products/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete product");
 
-      setProducts(products.filter((p) => p._id !== id));
+      setProducts(products.filter((p) => p._id !== deleteTarget.id));
+      setDeleteTarget(null);
     } catch (err: any) {
-      alert(err.message || "Something went wrong");
+      setError(err.message || "Failed to delete product");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -294,7 +301,7 @@ export default function ProductsClient({ initialProducts, categories, currency }
                     <button onClick={() => openEditModal(product)} style={styles.actionBtn}>
                       <Edit size={16} color="#4f46e5" />
                     </button>
-                    <button onClick={() => handleDelete(product._id)} style={styles.actionBtn}>
+                    <button onClick={() => setDeleteTarget({ id: product._id, name: product.name })} style={styles.actionBtn}>
                       <Trash size={16} color="#ef4444" />
                     </button>
                   </div>
@@ -510,6 +517,25 @@ export default function ProductsClient({ initialProducts, categories, currency }
           </div>
         </div>
       )}
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Product"
+        message={
+          <span>
+            Are you sure you want to delete product <strong>&quot;{deleteTarget?.name}&quot;</strong>? This action cannot be undone and will permanently remove this item from your catalog.
+          </span>
+        }
+        confirmText="Delete Product"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

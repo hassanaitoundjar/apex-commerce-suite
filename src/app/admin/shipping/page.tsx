@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { PlusCircle, Trash2, Check, RefreshCw, AlertTriangle, Truck, DollarSign, Clock, ToggleLeft, ToggleRight, Settings } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface ShippingMethod {
   _id: string;
@@ -18,6 +19,8 @@ export default function ShippingDashboard() {
   const [currency, setCurrency] = useState("$");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Form State
   const [name, setName] = useState("");
@@ -49,7 +52,10 @@ export default function ShippingDashboard() {
   };
 
   useEffect(() => {
-    fetchMethods();
+    const timer = setTimeout(() => {
+      fetchMethods();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleCreateMethod = async (e: React.FormEvent) => {
@@ -109,19 +115,23 @@ export default function ShippingDashboard() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this shipping method?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
 
     try {
-      const res = await fetch(`/api/admin/shipping/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/shipping/${deleteTarget.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete shipping method");
 
-      setMethods(prev => prev.filter(m => m._id !== id));
+      setMethods(prev => prev.filter(m => m._id !== deleteTarget.id));
       setSuccess("Shipping carrier profile deleted successfully");
       setTimeout(() => setSuccess(""), 3000);
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Error deleting shipping method");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -239,7 +249,7 @@ export default function ShippingDashboard() {
                             {method.isActive ? <ToggleRight size={26} color="#10b981" /> : <ToggleLeft size={26} color="#94a3b8" />}
                           </button>
                           <button
-                            onClick={() => handleDelete(method._id)}
+                            onClick={() => setDeleteTarget({ id: method._id, name: method.name })}
                             style={styles.deleteBtn}
                             title="Remove carrier"
                           >
@@ -325,6 +335,25 @@ export default function ShippingDashboard() {
           </form>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Shipping Method"
+        message={
+          <span>
+            Are you sure you want to delete shipping carrier <strong>&quot;{deleteTarget?.name}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Method"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

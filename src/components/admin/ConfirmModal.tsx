@@ -1,17 +1,19 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { AlertTriangle, Trash2, X, Loader2 } from "lucide-react";
+import { AlertTriangle, Trash2, X, Loader2, CheckCircle2, Info } from "lucide-react";
 
-interface ConfirmModalProps {
+export interface ConfirmModalProps {
   isOpen: boolean;
   title?: string;
   message?: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
-  variant?: "danger" | "warning" | "primary";
+  variant?: "danger" | "warning" | "primary" | "info" | "success";
   isLoading?: boolean;
-  onConfirm: () => void | Promise<void>;
+  loadingText?: string;
+  showCancelButton?: boolean;
+  onConfirm?: () => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -23,6 +25,8 @@ export default function ConfirmModal({
   cancelText = "Cancel",
   variant = "danger",
   isLoading = false,
+  loadingText,
+  showCancelButton = true,
   onConfirm,
   onClose,
 }: ConfirmModalProps) {
@@ -52,6 +56,72 @@ export default function ConfirmModal({
   if (!isOpen) return null;
 
   const isDanger = variant === "danger";
+  const isWarning = variant === "warning";
+  const isSuccess = variant === "success";
+  const isInfo = variant === "info";
+
+  const getIcon = () => {
+    if (isDanger) return <Trash2 size={26} />;
+    if (isWarning) return <AlertTriangle size={26} />;
+    if (isSuccess) return <CheckCircle2 size={26} />;
+    if (isInfo) return <Info size={26} />;
+    return <AlertTriangle size={26} />;
+  };
+
+  const getIconStyles = () => {
+    if (isDanger) {
+      return {
+        background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.05) 100%)",
+        color: "#ef4444",
+        border: "1px solid rgba(239, 68, 68, 0.25)",
+        boxShadow: "0 8px 16px -4px rgba(239, 68, 68, 0.15)",
+      };
+    }
+    if (isWarning) {
+      return {
+        background: "linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.05) 100%)",
+        color: "#f59e0b",
+        border: "1px solid rgba(245, 158, 11, 0.25)",
+        boxShadow: "0 8px 16px -4px rgba(245, 158, 11, 0.15)",
+      };
+    }
+    if (isSuccess) {
+      return {
+        background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.05) 100%)",
+        color: "#10b981",
+        border: "1px solid rgba(16, 185, 129, 0.25)",
+        boxShadow: "0 8px 16px -4px rgba(16, 185, 129, 0.15)",
+      };
+    }
+    return {
+      background: "linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(79, 70, 229, 0.05) 100%)",
+      color: "#6366f1",
+      border: "1px solid rgba(99, 102, 241, 0.25)",
+      boxShadow: "0 8px 16px -4px rgba(99, 102, 241, 0.15)",
+    };
+  };
+
+  const getConfirmButtonBackground = () => {
+    if (isDanger) return "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)";
+    if (isWarning) return "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
+    if (isSuccess) return "linear-gradient(135deg, #10b981 0%, #059669 100%)";
+    return "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)";
+  };
+
+  const getConfirmButtonShadow = () => {
+    if (isDanger) return "0 4px 14px rgba(239, 68, 68, 0.35)";
+    if (isWarning) return "0 4px 14px rgba(245, 158, 11, 0.35)";
+    if (isSuccess) return "0 4px 14px rgba(16, 185, 129, 0.35)";
+    return "0 4px 14px rgba(99, 102, 241, 0.35)";
+  };
+
+  const handleConfirmClick = () => {
+    if (onConfirm) {
+      onConfirm();
+    } else {
+      onClose();
+    }
+  };
 
   return (
     <div
@@ -96,9 +166,9 @@ export default function ConfirmModal({
           border-color: #cbd5e1 !important;
           color: #0f172a !important;
         }
-        .modal-danger-btn:hover:not(:disabled) {
+        .modal-action-btn:hover:not(:disabled) {
           transform: translateY(-1px);
-          box-shadow: 0 8px 20px -2px rgba(239, 68, 68, 0.45) !important;
+          filter: brightness(1.05);
         }
       `}</style>
 
@@ -153,17 +223,10 @@ export default function ConfirmModal({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: isDanger
-              ? "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.05) 100%)"
-              : "linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.05) 100%)",
-            color: isDanger ? "#ef4444" : "#f59e0b",
-            border: isDanger ? "1px solid rgba(239, 68, 68, 0.25)" : "1px solid rgba(245, 158, 11, 0.25)",
-            boxShadow: isDanger
-              ? "0 8px 16px -4px rgba(239, 68, 68, 0.15)"
-              : "0 8px 16px -4px rgba(245, 158, 11, 0.15)",
+            ...getIconStyles(),
           }}
         >
-          {isDanger ? <Trash2 size={26} /> : <AlertTriangle size={26} />}
+          {getIcon()}
         </div>
 
         {/* Title */}
@@ -201,40 +264,40 @@ export default function ConfirmModal({
             justifyContent: "center",
           }}
         >
-          <button
-            type="button"
-            className="modal-cancel-btn"
-            onClick={onClose}
-            disabled={isLoading}
-            style={{
-              flex: 1,
-              padding: "12px 18px",
-              borderRadius: "12px",
-              border: "1px solid #e2e8f0",
-              backgroundColor: "#ffffff",
-              color: "#475569",
-              fontSize: "14px",
-              fontWeight: "600",
-              cursor: isLoading ? "not-allowed" : "pointer",
-              transition: "all 0.18s ease",
-            }}
-          >
-            {cancelText}
-          </button>
+          {showCancelButton && (
+            <button
+              type="button"
+              className="modal-cancel-btn"
+              onClick={onClose}
+              disabled={isLoading}
+              style={{
+                flex: 1,
+                padding: "12px 18px",
+                borderRadius: "12px",
+                border: "1px solid #e2e8f0",
+                backgroundColor: "#ffffff",
+                color: "#475569",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: isLoading ? "not-allowed" : "pointer",
+                transition: "all 0.18s ease",
+              }}
+            >
+              {cancelText}
+            </button>
+          )}
 
           <button
             type="button"
-            className="modal-danger-btn"
-            onClick={onConfirm}
+            className="modal-action-btn"
+            onClick={handleConfirmClick}
             disabled={isLoading}
             style={{
               flex: 1,
               padding: "12px 18px",
               borderRadius: "12px",
               border: "none",
-              background: isDanger
-                ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
-                : "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+              background: getConfirmButtonBackground(),
               color: "#ffffff",
               fontSize: "14px",
               fontWeight: "700",
@@ -244,16 +307,14 @@ export default function ConfirmModal({
               alignItems: "center",
               justifyContent: "center",
               gap: "8px",
-              boxShadow: isDanger
-                ? "0 4px 14px rgba(239, 68, 68, 0.35)"
-                : "0 4px 14px rgba(99, 102, 241, 0.35)",
+              boxShadow: getConfirmButtonShadow(),
               transition: "all 0.18s ease",
             }}
           >
             {isLoading ? (
               <>
                 <Loader2 size={16} className="animate-spin" style={{ animation: "spin 1s linear infinite" }} />
-                <span>Deleting...</span>
+                <span>{loadingText || (confirmText === "Delete" ? "Deleting..." : "Processing...")}</span>
               </>
             ) : (
               confirmText

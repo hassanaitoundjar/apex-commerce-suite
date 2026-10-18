@@ -7,6 +7,7 @@ import { ALL_CURRENCIES } from "@/lib/currenciesList";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import { defaultWelcomeEmail, defaultOrderConfirmationEmail, defaultOrderProcessingEmail, defaultOrderShippedEmail, defaultOrderDeliveredEmail, defaultOrderCancelledEmail, defaultPasswordResetEmail } from "@/lib/defaultEmailTemplates";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 interface Settings {
   _id: string;
@@ -357,6 +358,7 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [settingsNotice, setSettingsNotice] = useState<{ title: string; message: string; variant: "success" | "danger" | "info" } | null>(null);
 
   const handleLogoUpload = async (name: string, file: File) => {
     const formData = new FormData();
@@ -376,6 +378,7 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to upload logo");
 
+      // eslint-disable-next-line react-hooks/purity
       const cacheBustUrl = `${data.url}?t=${Date.now()}`;
       if (name === "cod") setCodLogo(cacheBustUrl);
       else if (name === "stripe") setStripeLogo(cacheBustUrl);
@@ -434,7 +437,11 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI translation failed");
       setSuccess(true);
-      alert(`Successfully auto-translated all storefront keywords to ${localeCode.toUpperCase()}!`);
+      setSettingsNotice({
+        title: "Translation Complete",
+        message: `Successfully auto-translated all storefront keywords to ${localeCode.toUpperCase()}!`,
+        variant: "success",
+      });
       setShowTranslitModal(false);
     } catch (err: any) {
       setError(err.message || "Failed to run AI translation");
@@ -481,7 +488,11 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save overrides");
       setSuccess(true);
-      alert("Manual translations updated successfully!");
+      setSettingsNotice({
+        title: "Overrides Saved",
+        message: "Manual translations updated successfully!",
+        variant: "success",
+      });
       setShowViewModal(false);
     } catch (err: any) {
       setError(err.message || "Failed to save manual translations");
@@ -710,11 +721,19 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
       if (res.ok && data.url) {
         setUrl(data.url);
       } else {
-        alert(data.error || "Failed to upload image");
+        setSettingsNotice({
+          title: "Upload Failed",
+          message: data.error || "Failed to upload image",
+          variant: "danger",
+        });
       }
     } catch (error) {
       console.error("Upload error:", error);
-      alert("An error occurred during upload.");
+      setSettingsNotice({
+        title: "Upload Error",
+        message: "An error occurred during image upload.",
+        variant: "danger",
+      });
     }
   };
 
@@ -773,7 +792,11 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Failed to export database backup.");
+      setSettingsNotice({
+        title: "Export Failed",
+        message: "Failed to export database backup.",
+        variant: "danger",
+      });
     }
   };
 
@@ -808,10 +831,20 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
           body: JSON.stringify(json.settings),
         });
 
-        alert("Data restored successfully!");
-        window.location.reload();
+        setSettingsNotice({
+          title: "Restore Complete",
+          message: "Data restored successfully! The page will now reload.",
+          variant: "success",
+        });
+        setTimeout(() => {
+          window.location.reload();
+        }, 1200);
       } catch (err: any) {
-        alert(err.message || "Failed to restore backup.");
+        setSettingsNotice({
+          title: "Restore Failed",
+          message: err.message || "Failed to restore backup.",
+          variant: "danger",
+        });
       } finally {
         setLoading(false);
       }
@@ -941,7 +974,7 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
                     }
                   }}
                   onBlur={(e) => {
-                    let val = e.target.value;
+                    const val = e.target.value;
                     if (!/^#[0-9A-Fa-f]{6}$/.test(val)) {
                       setPrimaryColor("#d31e28");
                     }
@@ -2108,7 +2141,7 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
                       </p>
                       <ul style={styles.stepList}>
                         <li><strong>Facebook Developer Portal:</strong> Add your domain to the App Domains list and configure Facebook Login redirect URIs.</li>
-                        <li><strong>Google Cloud Console OAuth page:</strong> Add your domain to the "Authorized JavaScript origins" and "Authorized redirect URIs" list.</li>
+                        <li><strong>Google Cloud Console OAuth page:</strong> Add your domain to the &quot;Authorized JavaScript origins&quot; and &quot;Authorized redirect URIs&quot; list.</li>
                         <li><strong>Apple Developer Portal:</strong> Register your website under Services IDs and verify domains with the Apple validation files.</li>
                       </ul>
                     </div>
@@ -2766,6 +2799,17 @@ export default function SettingsClient({ initialSettings, activeTab }: SettingsC
       <div style={styles.card}>
         {renderActiveTabForm()}
       </div>
+
+      {/* Settings Notification / Error Modal */}
+      <ConfirmModal
+        isOpen={!!settingsNotice}
+        title={settingsNotice?.title || ""}
+        message={settingsNotice?.message || ""}
+        confirmText="OK"
+        showCancelButton={false}
+        variant={settingsNotice?.variant || "info"}
+        onClose={() => setSettingsNotice(null)}
+      />
     </div>
   );
 }

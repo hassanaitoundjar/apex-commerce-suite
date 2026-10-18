@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Mail, Search, Trash2, Copy, Check, Calendar, User, Clock, ArrowLeft, MessageSquare } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 export default function AdminMailboxPage() {
   const [messages, setMessages] = useState<any[]>([]);
@@ -10,6 +11,8 @@ export default function AdminMailboxPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; sender: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchMessages = async () => {
     setLoading(true);
@@ -30,7 +33,10 @@ export default function AdminMailboxPage() {
   };
 
   useEffect(() => {
-    fetchMessages();
+    const timer = setTimeout(() => {
+      fetchMessages();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleCopyEmail = (email: string, id: string) => {
@@ -39,23 +45,27 @@ export default function AdminMailboxPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDeleteMessage = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this message?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/mailbox/${id}`, {
+      const res = await fetch(`/api/admin/mailbox/${deleteTarget.id}`, {
         method: "DELETE"
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete message");
 
-      setMessages(prev => prev.filter(m => m._id !== id));
-      if (selectedMessage?._id === id) {
-        const remaining = messages.filter(m => m._id !== id);
+      setMessages(prev => prev.filter(m => m._id !== deleteTarget.id));
+      if (selectedMessage?._id === deleteTarget.id) {
+        const remaining = messages.filter(m => m._id !== deleteTarget.id);
         setSelectedMessage(remaining[0] || null);
       }
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Failed to delete message");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -176,7 +186,7 @@ export default function AdminMailboxPage() {
                   </button>
                   
                   <button
-                    onClick={() => handleDeleteMessage(selectedMessage._id)}
+                    onClick={() => setDeleteTarget({ id: selectedMessage._id, sender: selectedMessage.name })}
                     style={{ ...styles.actionBtn, borderColor: "#fee2e2", color: "#ef4444" }}
                     title="Delete Message"
                   >
@@ -202,6 +212,25 @@ export default function AdminMailboxPage() {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Message"
+        message={
+          <span>
+            Are you sure you want to delete this inquiry from <strong>&quot;{deleteTarget?.sender}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Message"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }
