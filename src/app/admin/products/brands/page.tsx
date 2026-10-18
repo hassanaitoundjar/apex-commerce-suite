@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Sparkles, Building2, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
+import { Plus, Search, Building2, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 export default function AdminBrandsPage() {
   const [brands, setBrands] = useState<any[]>([]);
@@ -9,6 +10,8 @@ export default function AdminBrandsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchBrands = async () => {
     try {
@@ -22,7 +25,10 @@ export default function AdminBrandsPage() {
   };
 
   useEffect(() => {
-    fetchBrands();
+    const timer = setTimeout(() => {
+      fetchBrands();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleAddBrand = async (e: React.FormEvent) => {
@@ -71,18 +77,22 @@ export default function AdminBrandsPage() {
     }
   };
 
-  const deleteBrand = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this brand?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/products/brands/${id}`, {
+      const res = await fetch(`/api/admin/products/brands/${deleteTarget.id}`, {
         method: "DELETE"
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete brand");
 
-      setBrands(brands.filter(b => b._id !== id));
+      setBrands(brands.filter(b => b._id !== deleteTarget.id));
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Failed to delete brand");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -164,7 +174,7 @@ export default function AdminBrandsPage() {
                     <button onClick={() => toggleBrand(b._id, b.active)} style={{ background: "none", border: "none", cursor: "pointer", color: b.active ? "#10b981" : "#94a3b8" }}>
                       {b.active ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
                     </button>
-                    <button onClick={() => deleteBrand(b._id)} style={styles.deleteBtn}>
+                    <button onClick={() => setDeleteTarget({ id: b._id, name: b.name })} style={styles.deleteBtn}>
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -174,6 +184,25 @@ export default function AdminBrandsPage() {
           </div>
         </div>
       </div>
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Brand"
+        message={
+          <span>
+            Are you sure you want to delete brand <strong>&quot;{deleteTarget?.name}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Brand"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

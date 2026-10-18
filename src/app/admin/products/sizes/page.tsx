@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Search, Sparkles, Trash2, Ruler } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 export default function AdminSizesPage() {
   const [sizes, setSizes] = useState<any[]>([]);
@@ -11,6 +12,8 @@ export default function AdminSizesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchSizes = async () => {
     try {
@@ -24,7 +27,10 @@ export default function AdminSizesPage() {
   };
 
   useEffect(() => {
-    fetchSizes();
+    const timer = setTimeout(() => {
+      fetchSizes();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleAddSize = async (e: React.FormEvent) => {
@@ -57,19 +63,23 @@ export default function AdminSizesPage() {
     }
   };
 
-  const deleteSize = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this size definition?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/products/sizes/${id}`, {
+      const res = await fetch(`/api/admin/products/sizes/${deleteTarget.id}`, {
         method: "DELETE",
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete size");
 
-      setSizes(sizes.filter(s => s._id !== id));
+      setSizes(sizes.filter(s => s._id !== deleteTarget.id));
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Failed to delete size");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -179,7 +189,7 @@ export default function AdminSizesPage() {
                       <div style={styles.catSlug}>Department: {s.category}</div>
                     </div>
                   </div>
-                  <button onClick={() => deleteSize(s._id)} style={styles.deleteBtn}>
+                  <button onClick={() => setDeleteTarget({ id: s._id, name: `${s.label} (${s.name})` })} style={styles.deleteBtn}>
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -188,6 +198,25 @@ export default function AdminSizesPage() {
           </div>
         </div>
       </div>
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Size"
+        message={
+          <span>
+            Are you sure you want to delete size definition <strong>&quot;{deleteTarget?.name}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Size"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

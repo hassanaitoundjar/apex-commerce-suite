@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Search, Loader2, FolderHeart, Sparkles, CheckCircle2 } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -11,6 +12,8 @@ export default function AdminCategoriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCategories = async () => {
     try {
@@ -27,7 +30,10 @@ export default function AdminCategoriesPage() {
   };
 
   useEffect(() => {
-    fetchCategories();
+    const timer = setTimeout(() => {
+      fetchCategories();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleAddCategory = async (e: React.FormEvent) => {
@@ -62,24 +68,34 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  const handleDeleteCategory = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete category "${name}"?`)) return;
+  const handleRequestDelete = (id: string, name: string) => {
+    setDeleteTarget({ id, name });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
+    setError("");
 
     try {
-      const res = await fetch(`/api/categories/${id}`, {
+      const res = await fetch(`/api/categories/${deleteTarget.id}`, {
         method: "DELETE",
       });
 
       if (res.ok) {
-        setSuccessMsg(`Category "${name}" deleted successfully.`);
+        setSuccessMsg(`Category "${deleteTarget.name}" deleted successfully.`);
         fetchCategories();
         setTimeout(() => setSuccessMsg(""), 3000);
+        setDeleteTarget(null);
       } else {
         const data = await res.json();
         setError(data.error || "Failed to delete category");
       }
-    } catch (err: any) {
+    } catch {
       setError("Failed to delete category");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -182,7 +198,7 @@ export default function AdminCategoriesPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleDeleteCategory(cat._id, cat.name)}
+                    onClick={() => handleRequestDelete(cat._id, cat.name)}
                     style={styles.deleteBtn}
                     title="Delete Category"
                   >
@@ -194,6 +210,25 @@ export default function AdminCategoriesPage() {
           )}
         </div>
       </div>
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Category"
+        message={
+          <span>
+            Are you sure you want to delete category <strong>&quot;{deleteTarget?.name}&quot;</strong>? This action cannot be undone and any products currently assigned to this department may need to be re-categorized.
+          </span>
+        }
+        confirmText="Delete Category"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
 
       <style>{`
         @keyframes spin {

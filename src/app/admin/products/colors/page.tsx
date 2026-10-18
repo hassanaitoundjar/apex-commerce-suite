@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Sparkles, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Sparkles, Trash2 } from "lucide-react";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 export default function AdminColorsPage() {
   const [colors, setColors] = useState<any[]>([]);
@@ -10,6 +11,8 @@ export default function AdminColorsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchColors = async () => {
     try {
@@ -23,7 +26,10 @@ export default function AdminColorsPage() {
   };
 
   useEffect(() => {
-    fetchColors();
+    const timer = setTimeout(() => {
+      fetchColors();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleAddColor = async (e: React.FormEvent) => {
@@ -55,19 +61,23 @@ export default function AdminColorsPage() {
     }
   };
 
-  const deleteColor = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this color swatch?")) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/products/colors/${id}`, {
+      const res = await fetch(`/api/admin/products/colors/${deleteTarget.id}`, {
         method: "DELETE"
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete color");
 
-      setColors(colors.filter(c => c._id !== id));
+      setColors(colors.filter(c => c._id !== deleteTarget.id));
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message || "Failed to delete color");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -170,7 +180,7 @@ export default function AdminColorsPage() {
                     <div style={styles.colorNameText}>{c.name}</div>
                     <div style={styles.colorHexText}>{c.hex}</div>
                   </div>
-                  <button onClick={() => deleteColor(c._id)} style={styles.deleteCircleBtn}>
+                  <button onClick={() => setDeleteTarget({ id: c._id, name: `${c.name} (${c.hex})` })} style={styles.deleteCircleBtn}>
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -179,6 +189,25 @@ export default function AdminColorsPage() {
           </div>
         </div>
       </div>
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Color Swatch"
+        message={
+          <span>
+            Are you sure you want to delete color swatch <strong>&quot;{deleteTarget?.name}&quot;</strong>? This action cannot be undone.
+          </span>
+        }
+        confirmText="Delete Color"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={deleting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }
