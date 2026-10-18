@@ -8,8 +8,6 @@ import Category from "@/models/Category";
 import { getSettings } from "@/lib/settings";
 import Countdown from "@/components/Countdown";
 import { Star, ShieldCheck, Truck, RotateCcw } from "lucide-react";
-import CategoryListSection from "@/components/home/CategoryListSection";
-import BestSellersSection from "@/components/home/BestSellersSection";
 
 import Translation from "@/models/Translation";
 
@@ -39,14 +37,11 @@ async function getHomeData() {
       });
     }
 
-    const allCatalogProducts = await Product.find({ isAvailable: true }).sort({ ratings: -1, createdAt: -1 }).limit(40);
-
     return {
       settings: JSON.parse(JSON.stringify(settings)),
       featuredProducts: JSON.parse(JSON.stringify(featuredProducts)),
       popularProducts: JSON.parse(JSON.stringify(popularProducts)),
       newArrivals: JSON.parse(JSON.stringify(newArrivals)),
-      allCatalogProducts: JSON.parse(JSON.stringify(allCatalogProducts)),
       categories: JSON.parse(JSON.stringify(categories)),
     };
   } catch (e) {
@@ -62,7 +57,6 @@ async function getHomeData() {
       featuredProducts: [],
       popularProducts: [],
       newArrivals: [],
-      allCatalogProducts: [],
       categories: [],
     };
   }
@@ -70,7 +64,7 @@ async function getHomeData() {
 
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
-  const { settings, featuredProducts, popularProducts, newArrivals, allCatalogProducts = [], categories } = await getHomeData();
+  const { settings, featuredProducts, popularProducts, newArrivals, categories } = await getHomeData();
 
   // Load translations matching current locale
   const translationsRaw = await Translation.find({});
@@ -185,6 +179,170 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
           color: #666666;
           max-width: 600px;
           margin: 0 auto;
+        }
+        
+        /* Rebuilt Circular Category Section */
+        .categories-circle-section {
+          padding: 56px 0 68px;
+          background-color: #faf8f5;
+          position: relative;
+        }
+
+        .cat-section-header {
+          margin-bottom: 36px;
+          text-align: left;
+        }
+
+        .cat-section-title {
+          font-family: 'Outfit', sans-serif;
+          font-size: 34px;
+          font-weight: 800;
+          color: #111827;
+          margin: 0 0 8px 0;
+          letter-spacing: -0.6px;
+          line-height: 1.2;
+        }
+
+        .cat-section-subtitle {
+          font-size: 15px;
+          color: #71717a;
+          margin: 0;
+          font-weight: 400;
+          letter-spacing: -0.2px;
+        }
+
+        .categories-circle-grid {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 36px 26px;
+          width: 100%;
+        }
+
+        .category-circle-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-decoration: none;
+          cursor: pointer;
+          position: relative;
+          width: 100%;
+        }
+
+        .category-circle-frame {
+          position: relative;
+          width: 100%;
+          max-width: 215px;
+          aspect-ratio: 1 / 1;
+          border-radius: 50%;
+          overflow: hidden;
+          background-color: #e5e5e5;
+          box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          margin: 0 auto;
+        }
+
+        .category-circle-card:hover .category-circle-frame {
+          transform: translateY(-5px);
+          box-shadow: 0 20px 35px -6px rgba(0, 0, 0, 0.16), 0 10px 18px -4px rgba(0, 0, 0, 0.08);
+        }
+
+        .category-circle-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 50%;
+          display: block;
+          transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .category-circle-card:hover .category-circle-img {
+          transform: scale(1.08);
+        }
+
+        .category-circle-overlay {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.12);
+          transition: background 0.3s ease;
+        }
+
+        .category-circle-card:hover .category-circle-overlay {
+          background: rgba(0, 0, 0, 0.22);
+        }
+
+        .category-pill-badge {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background-color: #ffffff;
+          color: #111827;
+          padding: 8px 22px;
+          border-radius: 9999px;
+          font-size: 13.5px;
+          font-weight: 600;
+          letter-spacing: -0.2px;
+          white-space: nowrap;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+          pointer-events: none;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          z-index: 2;
+        }
+
+        .category-circle-card:hover .category-pill-badge {
+          background-color: #111827;
+          color: #ffffff;
+          transform: translate(-50%, -50%) scale(1.04);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+        }
+
+        @media (max-width: 1200px) {
+          .categories-circle-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 28px 20px;
+          }
+        }
+
+        @media (max-width: 900px) {
+          .categories-circle-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 24px 16px;
+          }
+          .cat-section-title {
+            font-size: 28px;
+          }
+          .categories-circle-section {
+            padding: 44px 0 52px;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .categories-circle-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px 10px;
+          }
+          .category-pill-badge {
+            padding: 5px 12px !important;
+            font-size: 11px !important;
+          }
+          .cat-section-title {
+            font-size: 24px;
+          }
+          .categories-circle-section {
+            padding: 36px 0 44px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .categories-circle-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px 12px;
+          }
+          .category-pill-badge {
+            padding: 6px 14px !important;
+            font-size: 11.5px !important;
+          }
         }
         
         /* Product Cards */
@@ -340,31 +498,58 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         </div>
       </section>
 
-      {/* 1. Nos Catégories Section */}
-      <CategoryListSection
-        categories={categories.map((cat: any) => ({
-          id: cat._id || cat.id,
-          name: t(cat.name),
-          slug: cat.slug,
-          image: cat.image || cat.imageUrl,
-        }))}
-        lang={lang}
-        title={t("Nos catégories")}
-        subtitle={t("Explorez nos nouveautés et collections exclusives")}
-        seeMoreText={t("Voir Plus")}
-        seeLessText={t("Voir Moins")}
-      />
+      {/* 1. Nos Catégories Section (Circular Design) */}
+      {categories.length > 0 && (
+        <section className="categories-circle-section">
+          <div className="container">
+            <div className="cat-section-header">
+              <h2 className="cat-section-title">{t("Nos catégories")}</h2>
+              <p className="cat-section-subtitle">{t("Explorez nos nouveautés et collections exclusives")}</p>
+            </div>
 
-      {/* Featured Collection Section (Weekly Best Sellers Design) */}
-      <BestSellersSection
-        products={allCatalogProducts.length > 0 ? allCatalogProducts : featuredProducts}
-        categories={categories}
-        currency={settings.currency || "MAD"}
-        lang={lang}
-        productUrlFormat={settings.productUrlFormat}
-        title={t("Meilleures ventes de la semaine")}
-        actionText={t("Choisir les options") || "Choisir les options"}
-      />
+            <div className="categories-circle-grid">
+              {categories.map((cat: any) => (
+                <Link
+                  key={cat.slug || cat.name}
+                  href={`/${lang}/shop?category=${cat.slug}`}
+                  className="category-circle-card"
+                >
+                  <div className="category-circle-frame">
+                    <img
+                      src={cat.imageUrl || cat.image || "/placeholder.png"}
+                      alt={cat.name}
+                      className="category-circle-img"
+                      loading="lazy"
+                    />
+                    <div className="category-circle-overlay" />
+                    <span className="category-pill-badge">
+                      {t(cat.name)}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Featured Collection Section */}
+      {featuredProducts.length > 0 && (
+        <section className="custom-section">
+          <div className="container">
+            <div style={styles.sectionHeader}>
+              <h2 className="section-title-custom" style={{ margin: 0 }}>{t("Featured Collection")}</h2>
+              <Link href={`/${lang}/shop`} style={styles.viewAllLink}>
+                {t("View All Products")} &rarr;
+              </Link>
+            </div>
+
+            <div className="product-grid-custom">
+              {featuredProducts.map(renderProductCard)}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 3. Popular This Week Section */}
       <section className="custom-section">
