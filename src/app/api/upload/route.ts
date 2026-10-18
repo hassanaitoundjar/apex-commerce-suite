@@ -19,7 +19,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
     }
 
-    const uploadDir = path.join(process.cwd(), "public", "images", "Products");
+    const folder = (formData.get("folder") as string) || "Products";
+    const safeFolder = ["categories", "Products", "blogs"].includes(folder) ? folder : "Products";
+    const uploadDir = path.join(process.cwd(), "public", "images", safeFolder);
     
     // Ensure the directory exists
     await fs.mkdir(uploadDir, { recursive: true });
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
       const filepath = path.join(uploadDir, filename);
 
       await fs.writeFile(filepath, buffer);
-      imageUrls.push(`/images/Products/${filename}`);
+      imageUrls.push(`/images/${safeFolder}/${filename}`);
     }
 
     return NextResponse.json({ urls: imageUrls }, { status: 200 });
