@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Heart, ChevronDown } from "lucide-react";
+import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 
-interface ProductItem {
+export interface ProductItem {
   _id?: string;
   id?: string;
   name: string;
   category: string;
+  categoryId?: string;
+  categoryIds?: string[];
   price: number;
   salePrice?: number | null;
   images: string[];
@@ -23,25 +25,27 @@ interface ProductItem {
 
 interface BestSellersSectionProps {
   products: ProductItem[];
-  categories: { name: string; slug: string }[];
+  categories: { id?: string; _id?: string; name: string; slug: string }[];
   currency?: string;
-  lang: string;
+  lang?: string;
   productUrlFormat?: string;
   title?: string;
+  actionText?: string;
 }
 
 export default function BestSellersSection({
   products = [],
-  categories = [],
+  categories: apiCategories = [],
   currency = "MAD",
   lang = "fr",
   productUrlFormat = "slug",
   title = "Meilleures ventes de la semaine",
+  actionText = "Choisir les options",
 }: BestSellersSectionProps) {
-  const [activeTab, setActiveTab] = useState<string>("all");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [cardImageIndices, setCardImageIndices] = useState<Record<string, number>>({});
 
   // Sync wishlist from localStorage
   useEffect(() => {
@@ -69,17 +73,6 @@ export default function BestSellersSection({
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, []);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleToggleWishlist = (e: React.MouseEvent, product: ProductItem) => {
@@ -123,17 +116,16 @@ export default function BestSellersSection({
   };
 
   const formatPrice = (amount: number) => {
-    return (
-      amount.toLocaleString("fr-FR", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }) + " " + currency
-    );
+    const formatted = amount.toLocaleString("fr-FR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `${formatted} ${currency}`;
   };
 
-  // Prioritize top categories matching the reference storefront layout
+  // Build categories list starting with 'Tous'
   const priorityOrder = ["chaises", "tables", "canapes", "canapés", "fauteuils", "lits"];
-  const sortedCategories = [...categories].sort((a, b) => {
+  const sortedCategories = [...apiCategories].sort((a, b) => {
     const aSlug = (a.slug || "").toLowerCase();
     const bSlug = (b.slug || "").toLowerCase();
     const aIdx = priorityOrder.indexOf(aSlug);
@@ -144,18 +136,34 @@ export default function BestSellersSection({
     return a.name.localeCompare(b.name);
   });
 
-  // Top 5 category tabs, remainder in "Voir plus"
-  const topTabs = sortedCategories.slice(0, 5);
-  const moreTabs = sortedCategories.slice(5);
+  const categoriesList = [
+    { id: "all", label: "Tous", slug: "all" },
+    ...sortedCategories.map((cat) => ({
+      id: cat.slug || cat._id || cat.id || cat.name,
+      label: cat.name,
+      slug: cat.slug || cat.name,
+    })),
+  ];
 
-  // Filter products by tab
-  const filteredProducts = activeTab === "all"
+  const visibleCategories = showAllCategories
+    ? categoriesList
+    : categoriesList.slice(0, 6);
+
+  // Filter products by active category
+  const filteredProducts = (activeCategory === "all"
     ? products
     : products.filter((p) => {
         const prodCat = (p.category || "").toLowerCase();
-        const target = activeTab.toLowerCase();
-        return prodCat === target || prodCat.includes(target) || target.includes(prodCat);
-      });
+        const target = activeCategory.toLowerCase();
+        return (
+          prodCat === target ||
+          prodCat.includes(target) ||
+          target.includes(prodCat) ||
+          p.categoryId === activeCategory ||
+          (p.categoryIds && p.categoryIds.includes(activeCategory))
+        );
+      })
+  ).slice(0, 10);
 
   const getColorHex = (c: string) => {
     if (c.startsWith("#") || c.startsWith("rgb")) return c;
@@ -175,94 +183,69 @@ export default function BestSellersSection({
     return map[c.toLowerCase()] || c;
   };
 
+  const handleNextImage = (e: React.MouseEvent, productId: string, totalImages: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCardImageIndices((prev) => {
+      const current = prev[productId] || 0;
+      return { ...prev, [productId]: (current + 1) % totalImages };
+    });
+  };
+
+  const handlePrevImage = (e: React.MouseEvent, productId: string, totalImages: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCardImageIndices((prev) => {
+      const current = prev[productId] || 0;
+      return { ...prev, [productId]: (current - 1 + totalImages) % totalImages };
+    });
+  };
+
   return (
-    <section className="best-sellers-section">
+    <section className="weekly-bestsellers">
       <div className="container">
-        {/* Section Header with Title & Filter Tabs */}
-        <div className="best-sellers-header">
-          <h2 className="best-sellers-title">{title}</h2>
+        <div className="header-row">
+          <h2 className="title">{title}</h2>
+          <div className="filters">
+            {visibleCategories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                className={`filter-btn ${activeCategory === cat.id ? "active" : ""}`}
+                onClick={() => setActiveCategory(cat.id)}
+              >
+                {cat.label}
+              </button>
+            ))}
 
-          <div className="best-sellers-tabs">
-            {/* "Tous" tab */}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("all");
-                setDropdownOpen(false);
-              }}
-              className={`tab-btn ${activeTab === "all" ? "active" : ""}`}
-            >
-              Tous
-            </button>
-
-            {/* Top Categories */}
-            {topTabs.map((cat) => {
-              const isActive = activeTab.toLowerCase() === cat.slug.toLowerCase();
-              return (
-                <button
-                  key={cat.slug}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(cat.slug);
-                    setDropdownOpen(false);
-                  }}
-                  className={`tab-btn ${isActive ? "active" : ""}`}
-                >
-                  {cat.name}
-                </button>
-              );
-            })}
-
-            {/* "Voir plus" Dropdown */}
-            {moreTabs.length > 0 && (
-              <div className="tab-dropdown-wrap" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className={`tab-btn dropdown-toggle ${
-                    moreTabs.some((c) => c.slug.toLowerCase() === activeTab.toLowerCase())
-                      ? "active"
-                      : ""
-                  }`}
-                >
-                  <span>
-                    {moreTabs.find((c) => c.slug.toLowerCase() === activeTab.toLowerCase())
-                      ?.name || "Voir plus"}
-                  </span>
-                  <ChevronDown size={14} style={{ marginLeft: 4 }} />
-                </button>
-
-                {dropdownOpen && (
-                  <div className="tab-dropdown-menu">
-                    {moreTabs.map((cat) => (
-                      <button
-                        key={cat.slug}
-                        type="button"
-                        onClick={() => {
-                          setActiveTab(cat.slug);
-                          setDropdownOpen(false);
-                        }}
-                        className={`dropdown-item ${
-                          activeTab.toLowerCase() === cat.slug.toLowerCase() ? "selected" : ""
-                        }`}
-                      >
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
+            {categoriesList.length > 6 && (
+              <button
+                type="button"
+                onClick={() => setShowAllCategories(!showAllCategories)}
+                className="filter-btn see-more-link"
+                style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}
+              >
+                {showAllCategories ? "Voir moins" : "Voir plus"}
+                {!showAllCategories ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                  </svg>
                 )}
-              </div>
+              </button>
             )}
           </div>
         </div>
 
-        {/* 5-Column Responsive Product Grid */}
         {filteredProducts.length === 0 ? (
-          <div className="empty-products-state">
+          <div className="empty-state">
             <p>Aucun produit trouvé dans cette catégorie.</p>
           </div>
         ) : (
-          <div className="best-sellers-grid">
+          <div className="products-grid">
             {filteredProducts.map((product) => {
               const id = product._id || product.id || product.name;
               const isWishlisted = wishlistIds.includes(id);
@@ -282,91 +265,127 @@ export default function BestSellersSection({
                 discountPercent = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
               }
 
-              // Badges
-              const isNew = product.brand === "Avana" || product.brand === "Aruda" || (product.name.toLowerCase().includes("cocktail") || product.name.toLowerCase().includes("avana"));
-              const isPopular = (product.ratings && product.ratings >= 4.9) || (product.reviewsCount && product.reviewsCount >= 20) || product.name.toLowerCase().includes("kensington");
+              // Badges from reference
+              const isNew =
+                product.brand === "Avana" ||
+                product.brand === "Aruda" ||
+                product.name.toLowerCase().includes("cocktail") ||
+                product.name.toLowerCase().includes("avana") ||
+                product.name.toLowerCase().includes("revolt");
 
-              // Colors
-              const colorsList = product.colors && product.colors.length > 0
-                ? product.colors
-                : ["#9ca3af", "#1f2937"];
+              const isPopular =
+                (product.ratings && product.ratings >= 4.8) ||
+                (product.reviewsCount && product.reviewsCount >= 10) ||
+                product.name.toLowerCase().includes("kensington") ||
+                product.name.toLowerCase().includes("pivotant");
+
+              // Colors list
+              const colorsList =
+                product.colors && product.colors.length > 0
+                  ? product.colors
+                  : ["#9ca3af", "#4b5563"];
+
+              const images = product.images && product.images.length > 0 ? product.images : ["/placeholder.png"];
+              const currentImgIdx = cardImageIndices[id] || 0;
+              const activeImg = images[currentImgIdx % images.length];
 
               return (
-                <div key={id} className="bs-card">
-                  {/* Top-Left Stacked Badges */}
-                  <div className="bs-badges-wrap">
-                    {isNew && (
-                      <span className="bs-badge bs-badge-new">NOUVEAU</span>
-                    )}
-                    {discountPercent > 0 && (
-                      <span className="bs-badge bs-badge-discount">-{discountPercent}%</span>
-                    )}
-                    {isPopular && (
-                      <span className="bs-badge bs-badge-popular">POPULAIRE</span>
-                    )}
+                <div key={id} className="product-card-wrap">
+                  {/* Badges Stacked Top-Left */}
+                  <div className="card-badges">
+                    {isNew && <span className="badge-pill badge-green">NOUVEAU</span>}
+                    {discountPercent > 0 && <span className="badge-pill badge-orange">-{discountPercent}%</span>}
+                    {isPopular && <span className="badge-pill badge-red">POPULAIRE</span>}
                   </div>
 
-                  {/* Top-Right Wishlist Heart Button */}
+                  {/* Wishlist Heart Top-Right */}
                   <button
                     type="button"
                     onClick={(e) => handleToggleWishlist(e, product)}
-                    className={`bs-wishlist-btn ${isWishlisted ? "active" : ""}`}
-                    aria-label="Ajouter aux favoris"
+                    className={`card-wishlist-btn ${isWishlisted ? "active" : ""}`}
+                    aria-label="Wishlist"
                   >
                     <Heart
-                      size={18}
+                      size={17}
                       fill={isWishlisted ? "#ef4444" : "none"}
-                      stroke={isWishlisted ? "#ef4444" : "#64748b"}
+                      stroke={isWishlisted ? "#ef4444" : "#475569"}
                       strokeWidth={1.8}
                     />
                   </button>
 
-                  {/* Centered Image Card */}
-                  <Link href={getProductLink(product)} className="bs-img-link">
-                    <div className="bs-img-container">
+                  {/* Image Container with Hover Arrows */}
+                  <div className="card-img-box">
+                    <Link href={getProductLink(product)} className="card-img-link">
                       <img
-                        src={product.images && product.images.length > 0 ? product.images[0] : "/placeholder.png"}
+                        src={activeImg}
                         alt={product.name}
-                        className="bs-product-img"
+                        className="card-img"
                         loading="lazy"
                       />
-                    </div>
-                  </Link>
+                    </Link>
 
-                  {/* Product Details */}
-                  <div className="bs-info">
-                    <Link href={getProductLink(product)} className="bs-title-link">
-                      <h3 className="bs-title" title={product.name}>
+                    {images.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          className="arrow-btn arrow-left"
+                          onClick={(e) => handlePrevImage(e, id, images.length)}
+                          aria-label="Previous image"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          className="arrow-btn arrow-right"
+                          onClick={(e) => handleNextImage(e, id, images.length)}
+                          aria-label="Next image"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Details */}
+                  <div className="card-details">
+                    <Link href={getProductLink(product)} className="card-title-link">
+                      <h3 className="card-title" title={product.name}>
                         {product.name}
                       </h3>
                     </Link>
 
-                    <span className="bs-category">{product.category}</span>
+                    <span className="card-category">{product.category}</span>
 
-                    {/* Bottom Row: Price & Color Swatches */}
-                    <div className="bs-bottom-row">
-                      <div className="bs-price-wrap">
+                    <div className="card-bottom-row">
+                      <div className="card-price-group">
                         {discountPercent > 0 && (
-                          <span className="bs-old-price">
+                          <span className="card-old-price">
                             {formatPrice(originalPrice)}
                           </span>
                         )}
-                        <span className="bs-current-price">
+                        <span className="card-current-price">
                           {formatPrice(currentPrice)}
                         </span>
                       </div>
 
-                      {/* Color dots */}
-                      <div className="bs-colors-wrap">
+                      {/* Color Swatch Dots */}
+                      <div className="card-colors">
                         {colorsList.slice(0, 3).map((col, idx) => (
                           <span
                             key={idx}
-                            className="bs-color-dot"
+                            className="color-dot"
                             style={{ backgroundColor: getColorHex(col) }}
                             title={col}
                           />
                         ))}
                       </div>
+                    </div>
+
+                    {/* Action Button: Choisir les options */}
+                    <div className="card-action-wrap">
+                      <Link href={getProductLink(product)} className="card-action-btn">
+                        {actionText}
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -376,205 +395,192 @@ export default function BestSellersSection({
         )}
       </div>
 
-      <style jsx>{`
-        .best-sellers-section {
-          padding: 60px 0 80px;
-          background-color: #faf9f6;
+      <style>{`
+        .weekly-bestsellers {
+          padding: 4.5rem 0 5.5rem;
+          background-color: transparent;
         }
 
-        .best-sellers-header {
+        .header-row {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
-          flex-wrap: wrap;
-          gap: 16px;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1.5rem;
+          margin-bottom: 30px;
         }
 
-        .best-sellers-title {
-          font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+        @media (min-width: 768px) {
+          .header-row {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+          }
+        }
+
+        .title {
+          font-family: var(--font-heading, 'Outfit', sans-serif);
           font-size: 32px;
           font-weight: 700;
-          color: #111827;
+          color: var(--dp-charcoal, #242424);
           margin: 0;
-          letter-spacing: -0.5px;
+          line-height: 1.25;
+          letter-spacing: -0.01em;
         }
 
-        .best-sellers-tabs {
-          display: flex;
-          align-items: center;
-          gap: 24px;
-          flex-wrap: wrap;
-        }
-
-        .tab-btn {
-          background: none;
-          border: none;
-          font-size: 14.5px;
-          font-weight: 500;
-          color: #4b5563;
-          cursor: pointer;
-          padding: 4px 0 6px 0;
-          position: relative;
-          transition: color 0.2s ease;
-          border-bottom: 2px solid transparent;
-        }
-
-        .tab-btn:hover {
-          color: #111827;
-        }
-
-        .tab-btn.active {
-          color: #111827;
-          font-weight: 700;
-          border-bottom: 2px solid #111827;
-        }
-
-        .tab-dropdown-wrap {
-          position: relative;
-        }
-
-        .dropdown-toggle {
-          display: inline-flex;
-          align-items: center;
-        }
-
-        .tab-dropdown-menu {
-          position: absolute;
-          right: 0;
-          top: 100%;
-          margin-top: 8px;
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 8px 0;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-          z-index: 50;
-          min-width: 160px;
-        }
-
-        .dropdown-item {
-          display: block;
-          width: 100%;
-          text-align: left;
-          background: none;
-          border: none;
-          padding: 8px 16px;
-          font-size: 13.5px;
-          color: #374151;
-          cursor: pointer;
-          transition: background-color 0.15s ease;
-        }
-
-        .dropdown-item:hover {
-          background-color: #f1f5f9;
-          color: #111827;
-        }
-
-        .dropdown-item.selected {
-          font-weight: 700;
-          color: #6366f1;
-        }
-
-        /* 5-Column Grid */
-        .best-sellers-grid {
-          display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
-          gap: 22px;
-        }
-
-        @media (max-width: 1280px) {
-          .best-sellers-grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 18px;
+        @media (min-width: 1024px) {
+          .title {
+            font-size: 34px;
           }
         }
 
-        @media (max-width: 960px) {
-          .best-sellers-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 16px;
-          }
-          .best-sellers-title {
+        @media (max-width: 480px) {
+          .title {
             font-size: 26px;
           }
         }
 
-        @media (max-width: 640px) {
-          .best-sellers-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 12px;
-          }
-          .best-sellers-tabs {
-            gap: 14px;
-            font-size: 13.5px;
-          }
-          .best-sellers-title {
-            font-size: 22px;
+        .filters {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 1.25rem;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding-bottom: 4px;
+          width: 100%;
+        }
+        .filters::-webkit-scrollbar {
+          display: none;
+        }
+
+        @media (min-width: 768px) {
+          .filters {
+            flex-wrap: wrap;
+            overflow-x: visible;
+            width: auto;
           }
         }
 
-        /* Individual Card */
-        .bs-card {
+        .filter-btn {
+          background: transparent;
+          border: none;
+          font-family: var(--font-heading, 'Outfit', sans-serif);
+          font-size: 16px;
+          font-weight: 600;
+          color: #767676;
+          cursor: pointer;
+          padding: 0.25rem 0.5rem;
+          border-bottom: 2px solid transparent;
+          transition: all 0.25s ease;
+          white-space: nowrap;
+        }
+
+        .filter-btn:hover {
+          color: var(--dp-charcoal, #242424);
+        }
+
+        .filter-btn.active {
+          color: var(--dp-charcoal, #242424);
+          font-weight: 700;
+          border-bottom: 2px solid var(--dp-charcoal, #242424);
+        }
+
+        /* Product Grid */
+        .products-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 0.75rem;
+          align-items: start;
+        }
+
+        @media (min-width: 480px) {
+          .products-grid {
+            gap: 0.75rem;
+          }
+        }
+
+        @media (min-width: 768px) {
+          .products-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+          }
+        }
+
+        @media (min-width: 1024px) {
+          .products-grid {
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+          }
+        }
+
+        @media (min-width: 1280px) {
+          .products-grid {
+            grid-template-columns: repeat(5, 1fr);
+          }
+        }
+
+        /* Product Card */
+        .product-card-wrap {
           background: #ffffff;
-          border-radius: 16px;
+          border-radius: 18px;
           border: 1px solid #f1f5f9;
-          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
-          padding: 16px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          padding: 14px 14px 16px;
           position: relative;
           display: flex;
           flex-direction: column;
           transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .bs-card:hover {
+        .product-card-wrap:hover {
           transform: translateY(-4px);
-          box-shadow: 0 14px 28px rgba(0, 0, 0, 0.08);
+          box-shadow: 0 14px 28px rgba(0, 0, 0, 0.07);
         }
 
-        /* Badges */
-        .bs-badges-wrap {
+        /* Badges Stacked Top-Left */
+        .card-badges {
           position: absolute;
           top: 14px;
           left: 14px;
           display: flex;
           flex-direction: column;
-          gap: 5px;
-          z-index: 2;
+          gap: 4px;
+          z-index: 3;
+          pointer-events: none;
         }
 
-        .bs-badge {
+        .badge-pill {
           display: inline-block;
-          font-size: 10px;
+          font-size: 9.5px;
           font-weight: 800;
           color: #ffffff;
-          border-radius: 20px;
-          padding: 3px 8px;
+          border-radius: 12px;
+          padding: 2.5px 7.5px;
           text-align: center;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.4px;
           line-height: 1.2;
         }
 
-        .bs-badge-new {
+        .badge-green {
           background-color: #2e7d32;
         }
 
-        .bs-badge-discount {
+        .badge-orange {
           background-color: #c2410c;
-          font-size: 10.5px;
         }
 
-        .bs-badge-popular {
+        .badge-red {
           background-color: #991b1b;
         }
 
-        /* Wishlist Heart Button */
-        .bs-wishlist-btn {
+        /* Wishlist Heart Top-Right */
+        .card-wishlist-btn {
           position: absolute;
           top: 14px;
           right: 14px;
-          width: 30px;
-          height: 30px;
+          width: 32px;
+          height: 32px;
           background: rgba(255, 255, 255, 0.85);
           backdrop-filter: blur(4px);
           border: 1px solid rgba(0, 0, 0, 0.04);
@@ -583,72 +589,116 @@ export default function BestSellersSection({
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          z-index: 3;
+          z-index: 4;
           transition: transform 0.2s ease, background 0.2s ease;
           padding: 0;
         }
 
-        .bs-wishlist-btn:hover {
+        .card-wishlist-btn:hover {
           transform: scale(1.1);
           background: #ffffff;
         }
 
-        /* Image link & container */
-        .bs-img-link {
-          text-decoration: none;
-          display: block;
-        }
-
-        .bs-img-container {
+        /* Card Image Box */
+        .card-img-box {
+          position: relative;
           width: 100%;
           aspect-ratio: 1 / 1;
           display: flex;
           align-items: center;
           justify-content: center;
+          background: #ffffff;
+          border-radius: 12px;
           overflow: hidden;
           margin-bottom: 12px;
-          background: #ffffff;
         }
 
-        .bs-product-img {
+        .card-img-link {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+          text-decoration: none;
+        }
+
+        .card-img {
           max-width: 90%;
           max-height: 90%;
           object-fit: contain;
           transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .bs-card:hover .bs-product-img {
-          transform: scale(1.06);
+        .product-card-wrap:hover .card-img {
+          transform: scale(1.05);
         }
 
-        /* Info block */
-        .bs-info {
+        /* Arrow buttons on image */
+        .arrow-btn {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 24px;
+          height: 24px;
+          background: rgba(255, 255, 255, 0.9);
+          border: 1px solid rgba(0, 0, 0, 0.06);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #334155;
+          opacity: 0;
+          transition: opacity 0.2s ease, transform 0.2s ease;
+          z-index: 3;
+          padding: 0;
+        }
+
+        .arrow-left {
+          left: 6px;
+        }
+
+        .arrow-right {
+          right: 6px;
+        }
+
+        .product-card-wrap:hover .arrow-btn {
+          opacity: 1;
+        }
+
+        .arrow-btn:hover {
+          background: #ffffff;
+          transform: translateY(-50%) scale(1.1);
+        }
+
+        /* Details */
+        .card-details {
           display: flex;
           flex-direction: column;
           margin-top: auto;
         }
 
-        .bs-title-link {
+        .card-title-link {
           text-decoration: none;
         }
 
-        .bs-title {
+        .card-title {
           font-family: inherit;
-          font-size: 14px;
+          font-size: 14.5px;
           font-weight: 700;
-          color: #111827;
-          margin: 0 0 3px 0;
+          color: #1f2937;
+          margin: 0 0 2px 0;
           line-height: 1.35;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
-        .bs-title:hover {
-          color: #6366f1;
+        .card-title:hover {
+          color: #ea580c;
         }
 
-        .bs-category {
+        .card-category {
           font-size: 12px;
           color: #9ca3af;
           margin: 0 0 10px 0;
@@ -656,41 +706,39 @@ export default function BestSellersSection({
           font-weight: 400;
         }
 
-        /* Bottom Row */
-        .bs-bottom-row {
+        .card-bottom-row {
           display: flex;
           justify-content: space-between;
           align-items: baseline;
-          margin-top: auto;
         }
 
-        .bs-price-wrap {
+        .card-price-group {
           display: flex;
           align-items: baseline;
           gap: 6px;
+          flex-wrap: wrap;
         }
 
-        .bs-old-price {
-          font-size: 11px;
+        .card-old-price {
+          font-size: 11.5px;
           color: #94a3b8;
           text-decoration: line-through;
           font-weight: 400;
         }
 
-        .bs-current-price {
+        .card-current-price {
           font-size: 14.5px;
           font-weight: 800;
-          color: #111827;
+          color: #1f2937;
         }
 
-        /* Color Dots */
-        .bs-colors-wrap {
+        .card-colors {
           display: flex;
           align-items: center;
           gap: 4px;
         }
 
-        .bs-color-dot {
+        .color-dot {
           width: 11px;
           height: 11px;
           border-radius: 50%;
@@ -699,7 +747,38 @@ export default function BestSellersSection({
           flex-shrink: 0;
         }
 
-        .empty-products-state {
+        /* Action button: Choisir les options */
+        .card-action-wrap {
+          margin-top: 12px;
+          overflow: hidden;
+        }
+
+        .card-action-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          background-color: #eb8b41;
+          color: #ffffff;
+          padding: 8.5px 14px;
+          border-radius: 9999px;
+          font-size: 12.5px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: background-color 0.2s ease, transform 0.15s ease;
+          border: none;
+          box-sizing: border-box;
+          text-align: center;
+          letter-spacing: 0.1px;
+        }
+
+        .card-action-btn:hover {
+          background-color: #d97706;
+          color: #ffffff;
+          transform: translateY(-1px);
+        }
+
+        .empty-state {
           padding: 60px 20px;
           text-align: center;
           color: #64748b;
