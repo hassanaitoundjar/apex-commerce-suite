@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Menu, X, ShieldAlert, ArrowLeft, PanelLeft } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { Menu, ShieldAlert, ArrowLeft, PanelLeft } from "lucide-react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 const ROUTE_PERMISSIONS = [
@@ -21,6 +21,13 @@ const ROUTE_PERMISSIONS = [
   { prefix: "/admin/admins", permission: "admins", label: "Administrator Management" },
 ];
 
+interface AdminUser {
+  username?: string;
+  role?: string;
+  permissions?: string[];
+  [key: string]: unknown;
+}
+
 export default function AdminLayoutClient({ 
   children, 
   sidebar, 
@@ -33,12 +40,11 @@ export default function AdminLayoutClient({
   sidebar: React.ReactNode;
   headerRight?: React.ReactNode;
   isDemoMode?: boolean;
-  user?: any;
+  user?: AdminUser;
   storeName?: string;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
 
   // Route permission check
   const isSuperAdmin = user?.role === "super_admin";
@@ -57,10 +63,13 @@ export default function AdminLayoutClient({
 
   // Close sidebar on route change in mobile & reset window scroll position
   useEffect(() => {
-    setIsSidebarOpen(false);
+    const timer = setTimeout(() => {
+      setIsSidebarOpen(false);
+    }, 0);
     if (typeof window !== "undefined") {
       window.scrollTo(0, 0);
     }
+    return () => clearTimeout(timer);
   }, [pathname]);
 
   return (

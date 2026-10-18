@@ -25,12 +25,33 @@ import {
   X
 } from "lucide-react";
 
+interface AdminUser {
+  username?: string;
+  role?: string;
+  permissions?: string[];
+  [key: string]: unknown;
+}
+
+interface SubMenuItem {
+  key?: string;
+  label: string;
+  href?: string;
+}
+
+interface MenuItem {
+  key: string;
+  label: string;
+  href?: string;
+  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties; className?: string }>;
+  subItems?: SubMenuItem[];
+}
+
 export default function Sidebar({ 
   user,
   storeName,
   logoUrl
 }: { 
-  user?: any;
+  user?: AdminUser;
   storeName?: string;
   logoUrl?: string;
 }) {
@@ -41,10 +62,9 @@ export default function Sidebar({
 
   // Collapsed sidebar state with localStorage persistence
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
 
   // Floating flyout menu state for collapsed mode
-  const [hoveredFlyout, setHoveredFlyout] = useState<any>(null);
+  const [hoveredFlyout, setHoveredFlyout] = useState<MenuItem | null>(null);
   const [flyoutTop, setFlyoutTop] = useState<number>(0);
   const flyoutCloseTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -64,13 +84,13 @@ export default function Sidebar({
 
   // Load collapsed preference from localStorage and listen to external toggle event
   useEffect(() => {
-    setIsMounted(true);
     try {
       const saved = localStorage.getItem("snapshop_admin_sidebar_collapsed");
       if (saved !== null) {
-        setIsCollapsed(saved === "true");
+        const isTrue = saved === "true";
+        setTimeout(() => setIsCollapsed(isTrue), 0);
       }
-    } catch (e) {
+    } catch {
       // LocalStorage access safe catch
     }
 
@@ -79,7 +99,9 @@ export default function Sidebar({
         const next = !prev;
         try {
           localStorage.setItem("snapshop_admin_sidebar_collapsed", String(next));
-        } catch (e) {}
+        } catch {
+          // ignore
+        }
         return next;
       });
     };
@@ -90,7 +112,10 @@ export default function Sidebar({
 
   // Close flyout when route changes
   useEffect(() => {
-    setHoveredFlyout(null);
+    const timer = setTimeout(() => {
+      setHoveredFlyout(null);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [pathname]);
 
   const toggleCollapse = () => {
@@ -98,7 +123,9 @@ export default function Sidebar({
       const next = !prev;
       try {
         localStorage.setItem("snapshop_admin_sidebar_collapsed", String(next));
-      } catch (e) {}
+      } catch {
+        // ignore localStorage access issues
+      }
       return next;
     });
   };
@@ -111,7 +138,7 @@ export default function Sidebar({
   };
 
   // Flyout hover handlers for collapsed mode
-  const handleItemMouseEnter = (item: any, e: React.MouseEvent<HTMLElement>) => {
+  const handleItemMouseEnter = (item: MenuItem, e: React.MouseEvent<HTMLElement>) => {
     if (!isCollapsed) return;
     if (flyoutCloseTimer.current) {
       clearTimeout(flyoutCloseTimer.current);
@@ -249,20 +276,24 @@ export default function Sidebar({
   // Auto-expand menus when searching matches their subitems
   useEffect(() => {
     if (searchQuery) {
+      const q = searchQuery.toLowerCase();
       const newExpanded: Record<string, boolean> = {};
       authorizedGroups.forEach(group => {
         group.items.forEach(item => {
           if (item.subItems) {
-            const hasMatch = item.subItems.some(sub => sub.label.toLowerCase().includes(searchQuery.toLowerCase()));
+            const hasMatch = item.subItems.some(sub => sub.label.toLowerCase().includes(q));
             if (hasMatch) {
               newExpanded[item.key] = true;
             }
           }
         });
       });
-      setExpandedMenus(prev => ({ ...prev, ...newExpanded }));
+      const timer = setTimeout(() => {
+        setExpandedMenus(prev => ({ ...prev, ...newExpanded }));
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [searchQuery]);
+  }, [searchQuery, authorizedGroups]);
 
   // Filter groups and items
   const filteredGroups = authorizedGroups.map(group => {
@@ -609,13 +640,13 @@ export default function Sidebar({
                 flexDirection: "column",
                 gap: isCollapsed ? "6px" : "3px",
               }}>
-                {group.items.map((item: any) => {
+                {group.items.map((item: MenuItem) => {
                   const hasSubItems = !!item.subItems;
                   const isExpanded = !!expandedMenus[item.key];
                   
                   // Determine active states
                   const isCurrentRouteActive = pathname === item.href;
-                  const isChildRouteActive = item.subItems?.some((sub: any) => {
+                  const isChildRouteActive = item.subItems?.some((sub: SubMenuItem) => {
                     if (item.key === "settings") {
                       return pathname?.startsWith("/admin/settings") && activeTab === sub.key;
                     }
@@ -626,7 +657,7 @@ export default function Sidebar({
 
                   // COLLAPSED MODE: ICON-ONLY BUTTON
                   if (isCollapsed) {
-                    const targetHref = hasSubItems ? (item.subItems[0]?.href || "#") : (item.href || "#");
+                    const targetHref = hasSubItems ? (item.subItems?.[0]?.href || "#") : (item.href || "#");
 
                     return (
                       <div 
@@ -785,7 +816,7 @@ export default function Sidebar({
                           borderRadius: "0 8px 8px 0",
                           gap: "5px",
                         }}>
-                          {item.subItems?.map((sub: any) => {
+                          {item.subItems?.map((sub: SubMenuItem) => {
                             const isSubActive = item.key === "settings"
                               ? (pathname?.startsWith("/admin/settings") && activeTab === sub.key)
                               : pathname === sub.href;
@@ -1032,7 +1063,7 @@ export default function Sidebar({
           {/* Subitems list */}
           {hoveredFlyout.subItems ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "2px", maxHeight: "280px", overflowY: "auto" }} className="modern-sidebar-scroll">
-              {hoveredFlyout.subItems.map((sub: any) => {
+              {hoveredFlyout.subItems.map((sub: SubMenuItem) => {
                 const isSubActive = hoveredFlyout.key === "settings"
                   ? (pathname?.startsWith("/admin/settings") && activeTab === sub.key)
                   : pathname === sub.href;

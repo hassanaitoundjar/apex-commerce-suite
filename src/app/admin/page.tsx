@@ -17,14 +17,9 @@ import {
   AlertTriangle, 
   Percent, 
   ArrowUpRight, 
-  ShoppingBag,
   Activity,
   Calendar,
-  Layers,
-  ArrowRight,
-  Sparkles,
   ShieldCheck,
-  CheckCircle2,
   Clock,
   Package
 } from "lucide-react";
@@ -105,20 +100,42 @@ async function getDashboardStats() {
   }
 }
 
+interface AdminUser {
+  name?: string;
+  username?: string;
+  role?: string;
+}
+
+interface CustomerInfo {
+  name: string;
+  email: string;
+}
+
+interface RecentOrder {
+  _id: string;
+  customer: CustomerInfo;
+  paymentMethod: string;
+  total: number;
+  paymentStatus: string;
+  orderStatus: string;
+}
+
 export default async function AdminDashboard() {
   const { stats, recentOrders, currency } = await getDashboardStats();
 
   // Get logged in admin user name
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
-  let loggedInUser: any = null;
+  let loggedInUser: AdminUser | null = null;
   if (token) {
     const decoded = verifyToken(token);
     if (decoded?.id) {
       await dbConnect();
       try {
         loggedInUser = await User.findById(decoded.id);
-      } catch (e) {}
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 
@@ -772,7 +789,7 @@ export default async function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentOrders.map((order: any) => (
+                  {recentOrders.map((order: RecentOrder) => (
                     <tr key={order._id} className="table-row-hover" style={styles.tableBodyTr}>
                       <td style={styles.tableTd}>
                         <span style={styles.orderRefBadge}>
