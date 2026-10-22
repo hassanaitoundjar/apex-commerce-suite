@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Heart, ChevronDown } from "lucide-react";
+import { Heart, ChevronDown, Star, ShoppingBag, Eye, ArrowRight } from "lucide-react";
+import { useApp } from "@/context/AppContext";
 
-interface ProductItem {
+export interface ProductItem {
   _id?: string;
   id?: string;
   name: string;
@@ -13,10 +14,12 @@ interface ProductItem {
   salePrice?: number | null;
   images: string[];
   colors?: string[];
+  sizes?: string[];
   ratings?: number;
   reviewsCount?: number;
   isFeatured?: boolean;
   isOnSale?: boolean;
+  isAvailable?: boolean;
   createdAt?: string;
   brand?: string;
 }
@@ -28,6 +31,7 @@ interface BestSellersSectionProps {
   lang: string;
   productUrlFormat?: string;
   title?: string;
+  subtitle?: string;
 }
 
 export default function BestSellersSection({
@@ -36,12 +40,14 @@ export default function BestSellersSection({
   currency = "MAD",
   lang = "fr",
   productUrlFormat = "slug",
-  title = "Meilleures ventes de la semaine",
+  title = "Meilleures Ventes de la Semaine",
+  subtitle = "Les pièces les plus plébiscitées par notre communauté pour homme et femme",
 }: BestSellersSectionProps) {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { addToCart } = useApp ? useApp() : { addToCart: () => {} };
 
   // Sync wishlist from localStorage
   useEffect(() => {
@@ -71,7 +77,7 @@ export default function BestSellersSection({
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  // Close dropdown when clicking outside
+  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -131,135 +137,92 @@ export default function BestSellersSection({
     );
   };
 
-  // Prioritize top categories matching the reference storefront layout
-  const priorityOrder = ["chaises", "tables", "canapes", "canapés", "fauteuils", "lits"];
-  const sortedCategories = [...categories].sort((a, b) => {
-    const aSlug = (a.slug || "").toLowerCase();
-    const bSlug = (b.slug || "").toLowerCase();
-    const aIdx = priorityOrder.indexOf(aSlug);
-    const bIdx = priorityOrder.indexOf(bSlug);
-    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-    if (aIdx !== -1) return -1;
-    if (bIdx !== -1) return 1;
-    return a.name.localeCompare(b.name);
+  // Women-related slugs / keywords
+  const isWomenProduct = (p: ProductItem) => {
+    const cat = (p.category || "").toLowerCase();
+    const name = (p.name || "").toLowerCase();
+    return (
+      cat === "women" ||
+      cat === "dresses" ||
+      name.includes("robe") ||
+      name.includes("femme") ||
+      name.includes("palazzio") ||
+      name.includes("sac")
+    );
+  };
+
+  // Men-related slugs / keywords
+  const isMenProduct = (p: ProductItem) => {
+    const cat = (p.category || "").toLowerCase();
+    const name = (p.name || "").toLowerCase();
+    return (
+      cat === "men" ||
+      cat === "suits" ||
+      cat === "hoodies" ||
+      name.includes("homme") ||
+      name.includes("costume") ||
+      name.includes("manteau") ||
+      name.includes("blouson") ||
+      name.includes("oxford") ||
+      name.includes("selvedge")
+    );
+  };
+
+  // Filter products by active tab
+  const filteredProducts = products.filter((p) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "women") return isWomenProduct(p);
+    if (activeTab === "men") return isMenProduct(p);
+    if (activeTab === "sale") return p.isOnSale;
+
+    const prodCat = (p.category || "").toLowerCase();
+    const target = activeTab.toLowerCase();
+    return prodCat === target || prodCat.includes(target) || target.includes(prodCat);
   });
 
-  // Top 5 category tabs, remainder in "Voir plus"
-  const topTabs = sortedCategories.slice(0, 5);
-  const moreTabs = sortedCategories.slice(5);
-
-  // Filter products by tab
-  const filteredProducts = activeTab === "all"
-    ? products
-    : products.filter((p) => {
-        const prodCat = (p.category || "").toLowerCase();
-        const target = activeTab.toLowerCase();
-        return prodCat === target || prodCat.includes(target) || target.includes(prodCat);
-      });
-
-  const getColorHex = (c: string) => {
-    if (c.startsWith("#") || c.startsWith("rgb")) return c;
-    const map: Record<string, string> = {
-      grey: "#9ca3af",
-      gray: "#9ca3af",
-      black: "#1f2937",
-      white: "#f3f4f6",
-      cream: "#f5f0eb",
-      brown: "#78350f",
-      wood: "#8b5a2b",
-      navy: "#1e3a8a",
-      blue: "#2563eb",
-      green: "#15803d",
-      red: "#b91c1c",
-    };
-    return map[c.toLowerCase()] || c;
-  };
+  // Category Tabs Configuration
+  const tabs = [
+    { id: "all", label: "Tous" },
+    { id: "women", label: "Femmes" },
+    { id: "men", label: "Hommes" },
+    { id: "jackets", label: "Vestes & Manteaux" },
+    { id: "dresses", label: "Robes" },
+    { id: "shoes", label: "Chaussures" },
+    { id: "sale", label: "Promotions" },
+  ];
 
   return (
     <section className="best-sellers-section">
       <div className="container">
-        {/* Section Header with Title & Filter Tabs */}
+        {/* Header & Tabs */}
         <div className="best-sellers-header">
-          <h2 className="best-sellers-title">{title}</h2>
+          <div className="header-text-block">
+            <span className="section-eyebrow">TENDANCES & SÉLECTIONS</span>
+            <h2 className="best-sellers-title">{title}</h2>
+            <p className="best-sellers-subtitle">{subtitle}</p>
+          </div>
 
-          <div className="best-sellers-tabs">
-            {/* "Tous" tab */}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("all");
-                setDropdownOpen(false);
-              }}
-              className={`tab-btn ${activeTab === "all" ? "active" : ""}`}
-            >
-              Tous
-            </button>
-
-            {/* Top Categories */}
-            {topTabs.map((cat) => {
-              const isActive = activeTab.toLowerCase() === cat.slug.toLowerCase();
+          <div className="best-sellers-tabs-wrapper">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
               return (
                 <button
-                  key={cat.slug}
+                  key={tab.id}
                   type="button"
-                  onClick={() => {
-                    setActiveTab(cat.slug);
-                    setDropdownOpen(false);
-                  }}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`tab-btn ${isActive ? "active" : ""}`}
                 >
-                  {cat.name}
+                  {tab.label}
                 </button>
               );
             })}
-
-            {/* "Voir plus" Dropdown */}
-            {moreTabs.length > 0 && (
-              <div className="tab-dropdown-wrap" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className={`tab-btn dropdown-toggle ${
-                    moreTabs.some((c) => c.slug.toLowerCase() === activeTab.toLowerCase())
-                      ? "active"
-                      : ""
-                  }`}
-                >
-                  <span>
-                    {moreTabs.find((c) => c.slug.toLowerCase() === activeTab.toLowerCase())
-                      ?.name || "Voir plus"}
-                  </span>
-                  <ChevronDown size={14} style={{ marginLeft: 4 }} />
-                </button>
-
-                {dropdownOpen && (
-                  <div className="tab-dropdown-menu">
-                    {moreTabs.map((cat) => (
-                      <button
-                        key={cat.slug}
-                        type="button"
-                        onClick={() => {
-                          setActiveTab(cat.slug);
-                          setDropdownOpen(false);
-                        }}
-                        className={`dropdown-item ${
-                          activeTab.toLowerCase() === cat.slug.toLowerCase() ? "selected" : ""
-                        }`}
-                      >
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* 5-Column Responsive Product Grid */}
+        {/* 4/5-Column Responsive Product Grid */}
         {filteredProducts.length === 0 ? (
           <div className="empty-products-state">
-            <p>Aucun produit trouvé dans cette catégorie.</p>
+            <p>Aucun article trouvé dans cette sélection.</p>
           </div>
         ) : (
           <div className="best-sellers-grid">
@@ -267,7 +230,7 @@ export default function BestSellersSection({
               const id = product._id || product.id || product.name;
               const isWishlisted = wishlistIds.includes(id);
 
-              // Calculate discount % if available
+              // Discount calculation
               let discountPercent = 0;
               let originalPrice = product.price;
               let currentPrice = product.price;
@@ -282,68 +245,91 @@ export default function BestSellersSection({
                 discountPercent = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
               }
 
-              // Badges
-              const isNew = product.brand === "Avana" || product.brand === "Aruda" || (product.name.toLowerCase().includes("cocktail") || product.name.toLowerCase().includes("avana"));
-              const isPopular = (product.ratings && product.ratings >= 4.9) || (product.reviewsCount && product.reviewsCount >= 20) || product.name.toLowerCase().includes("kensington");
-
-              // Colors
-              const colorsList = product.colors && product.colors.length > 0
-                ? product.colors
-                : ["#9ca3af", "#1f2937"];
+              const isBestSeller = (product.ratings && product.ratings >= 4.8) || (product.reviewsCount && product.reviewsCount >= 25);
+              const isNew = product.createdAt && new Date(product.createdAt).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000;
 
               return (
                 <div key={id} className="bs-card">
-                  {/* Top-Left Stacked Badges */}
+                  {/* Badges container */}
                   <div className="bs-badges-wrap">
-                    {isNew && (
-                      <span className="bs-badge bs-badge-new">NOUVEAU</span>
-                    )}
                     {discountPercent > 0 && (
                       <span className="bs-badge bs-badge-discount">-{discountPercent}%</span>
                     )}
-                    {isPopular && (
-                      <span className="bs-badge bs-badge-popular">POPULAIRE</span>
+                    {isBestSeller && (
+                      <span className="bs-badge bs-badge-popular">BEST SELLER</span>
+                    )}
+                    {isNew && !isBestSeller && (
+                      <span className="bs-badge bs-badge-new">NOUVEAU</span>
                     )}
                   </div>
 
-                  {/* Top-Right Wishlist Heart Button */}
+                  {/* Wishlist Button */}
                   <button
                     type="button"
                     onClick={(e) => handleToggleWishlist(e, product)}
                     className={`bs-wishlist-btn ${isWishlisted ? "active" : ""}`}
                     aria-label="Ajouter aux favoris"
+                    title="Ajouter aux favoris"
                   >
                     <Heart
-                      size={18}
+                      size={17}
                       fill={isWishlisted ? "#ef4444" : "none"}
-                      stroke={isWishlisted ? "#ef4444" : "#64748b"}
-                      strokeWidth={1.8}
+                      stroke={isWishlisted ? "#ef4444" : "#475569"}
+                      strokeWidth={2}
                     />
                   </button>
 
-                  {/* Centered Image Card */}
+                  {/* Image Link with Dual Hover if multiple images */}
                   <Link href={getProductLink(product)} className="bs-img-link">
                     <div className="bs-img-container">
                       <img
                         src={product.images && product.images.length > 0 ? product.images[0] : "/placeholder.png"}
                         alt={product.name}
-                        className="bs-product-img"
+                        className="bs-product-img primary-img"
                         loading="lazy"
                       />
+                      {product.images && product.images.length > 1 && (
+                        <img
+                          src={product.images[1]}
+                          alt={`${product.name} vue 2`}
+                          className="bs-product-img secondary-img"
+                          loading="lazy"
+                        />
+                      )}
                     </div>
                   </Link>
 
                   {/* Product Details */}
                   <div className="bs-info">
+                    {/* Brand & Category */}
+                    <div className="bs-meta-row">
+                      <span className="bs-brand">{product.brand || "SnapShop"}</span>
+                      <span className="bs-category">{product.category}</span>
+                    </div>
+
+                    {/* Title */}
                     <Link href={getProductLink(product)} className="bs-title-link">
                       <h3 className="bs-title" title={product.name}>
                         {product.name}
                       </h3>
                     </Link>
 
-                    <span className="bs-category">{product.category}</span>
+                    {/* Rating Stars */}
+                    <div className="bs-rating-row">
+                      <div className="stars-box">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            size={12}
+                            fill={i < Math.floor(product.ratings || 5) ? "#fbbf24" : "none"}
+                            stroke="#fbbf24"
+                          />
+                        ))}
+                      </div>
+                      <span className="reviews-count">({product.reviewsCount || 12})</span>
+                    </div>
 
-                    {/* Bottom Row: Price & Color Swatches */}
+                    {/* Price & Action Row */}
                     <div className="bs-bottom-row">
                       <div className="bs-price-wrap">
                         {discountPercent > 0 && (
@@ -356,17 +342,14 @@ export default function BestSellersSection({
                         </span>
                       </div>
 
-                      {/* Color dots */}
-                      <div className="bs-colors-wrap">
-                        {colorsList.slice(0, 3).map((col, idx) => (
-                          <span
-                            key={idx}
-                            className="bs-color-dot"
-                            style={{ backgroundColor: getColorHex(col) }}
-                            title={col}
-                          />
-                        ))}
-                      </div>
+                      {/* Quick Add / View Icon */}
+                      <Link
+                        href={getProductLink(product)}
+                        className="bs-quick-btn"
+                        title="Voir le produit"
+                      >
+                        <Eye size={15} />
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -378,169 +361,140 @@ export default function BestSellersSection({
 
       <style jsx>{`
         .best-sellers-section {
-          padding: 60px 0 80px;
-          background-color: #faf9f6;
+          padding: 68px 0 88px;
+          background-color: #ffffff;
+          border-top: 1px solid #f1f5f9;
         }
 
         .best-sellers-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
+          align-items: flex-end;
+          margin-bottom: 38px;
           flex-wrap: wrap;
-          gap: 16px;
+          gap: 20px;
+        }
+
+        .header-text-block {
+          max-width: 500px;
+        }
+
+        .section-eyebrow {
+          display: block;
+          font-size: 11px;
+          font-weight: 700;
+          color: #c2410c;
+          letter-spacing: 1px;
+          margin-bottom: 6px;
+          text-transform: uppercase;
         }
 
         .best-sellers-title {
           font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-          font-size: 32px;
-          font-weight: 700;
-          color: #111827;
-          margin: 0;
-          letter-spacing: -0.5px;
+          font-size: clamp(26px, 3.2vw, 36px);
+          font-weight: 800;
+          color: #0f172a;
+          margin: 0 0 6px 0;
+          letter-spacing: -0.6px;
+          line-height: 1.2;
         }
 
-        .best-sellers-tabs {
+        .best-sellers-subtitle {
+          font-size: 15px;
+          color: #64748b;
+          margin: 0;
+          font-weight: 400;
+        }
+
+        .best-sellers-tabs-wrapper {
           display: flex;
           align-items: center;
-          gap: 24px;
+          gap: 8px;
           flex-wrap: wrap;
+          background: #f8fafc;
+          padding: 6px;
+          border-radius: 9999px;
+          border: 1px solid #e2e8f0;
         }
 
         .tab-btn {
-          background: none;
+          background: transparent;
           border: none;
-          font-size: 14.5px;
-          font-weight: 500;
-          color: #4b5563;
+          font-size: 13.5px;
+          font-weight: 600;
+          color: #475569;
           cursor: pointer;
-          padding: 4px 0 6px 0;
-          position: relative;
-          transition: color 0.2s ease;
-          border-bottom: 2px solid transparent;
+          padding: 7px 16px;
+          border-radius: 9999px;
+          transition: all 0.2s ease;
         }
 
         .tab-btn:hover {
-          color: #111827;
+          color: #0f172a;
         }
 
         .tab-btn.active {
-          color: #111827;
-          font-weight: 700;
-          border-bottom: 2px solid #111827;
+          background: #0f172a;
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
         }
 
-        .tab-dropdown-wrap {
-          position: relative;
-        }
-
-        .dropdown-toggle {
-          display: inline-flex;
-          align-items: center;
-        }
-
-        .tab-dropdown-menu {
-          position: absolute;
-          right: 0;
-          top: 100%;
-          margin-top: 8px;
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          padding: 8px 0;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-          z-index: 50;
-          min-width: 160px;
-        }
-
-        .dropdown-item {
-          display: block;
-          width: 100%;
-          text-align: left;
-          background: none;
-          border: none;
-          padding: 8px 16px;
-          font-size: 13.5px;
-          color: #374151;
-          cursor: pointer;
-          transition: background-color 0.15s ease;
-        }
-
-        .dropdown-item:hover {
-          background-color: #f1f5f9;
-          color: #111827;
-        }
-
-        .dropdown-item.selected {
-          font-weight: 700;
-          color: #6366f1;
-        }
-
-        /* 5-Column Grid */
+        /* 4-column modern fashion grid */
         .best-sellers-grid {
           display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
-          gap: 22px;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 28px;
         }
 
-        @media (max-width: 1280px) {
-          .best-sellers-grid {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 18px;
-          }
-        }
-
-        @media (max-width: 960px) {
+        @media (max-width: 1200px) {
           .best-sellers-grid {
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 16px;
-          }
-          .best-sellers-title {
-            font-size: 26px;
+            gap: 22px;
           }
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 840px) {
+          .best-sellers-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+          }
+        }
+
+        @media (max-width: 480px) {
           .best-sellers-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 12px;
-          }
-          .best-sellers-tabs {
-            gap: 14px;
-            font-size: 13.5px;
-          }
-          .best-sellers-title {
-            font-size: 22px;
           }
         }
 
         /* Individual Card */
         .bs-card {
           background: #ffffff;
-          border-radius: 16px;
+          border-radius: 18px;
           border: 1px solid #f1f5f9;
-          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03);
-          padding: 16px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+          overflow: hidden;
           position: relative;
           display: flex;
           flex-direction: column;
-          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .bs-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 14px 28px rgba(0, 0, 0, 0.08);
+          transform: translateY(-6px);
+          box-shadow: 0 16px 36px rgba(0, 0, 0, 0.1);
         }
 
         /* Badges */
         .bs-badges-wrap {
           position: absolute;
-          top: 14px;
-          left: 14px;
+          top: 12px;
+          left: 12px;
           display: flex;
           flex-direction: column;
           gap: 5px;
-          z-index: 2;
+          z-index: 3;
+          pointer-events: none;
         }
 
         .bs-badge {
@@ -548,48 +502,48 @@ export default function BestSellersSection({
           font-size: 10px;
           font-weight: 800;
           color: #ffffff;
-          border-radius: 20px;
+          border-radius: 6px;
           padding: 3px 8px;
           text-align: center;
           letter-spacing: 0.5px;
-          line-height: 1.2;
-        }
-
-        .bs-badge-new {
-          background-color: #2e7d32;
         }
 
         .bs-badge-discount {
-          background-color: #c2410c;
-          font-size: 10.5px;
+          background-color: #dc2626;
         }
 
         .bs-badge-popular {
-          background-color: #991b1b;
+          background-color: #0f172a;
+          color: #fcd34d;
+        }
+
+        .bs-badge-new {
+          background-color: #15803d;
         }
 
         /* Wishlist Heart Button */
         .bs-wishlist-btn {
           position: absolute;
-          top: 14px;
-          right: 14px;
-          width: 30px;
-          height: 30px;
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(4px);
-          border: 1px solid rgba(0, 0, 0, 0.04);
+          top: 12px;
+          right: 12px;
+          width: 34px;
+          height: 34px;
+          background: rgba(255, 255, 255, 0.9);
+          backdrop-filter: blur(6px);
+          border: 1px solid rgba(0, 0, 0, 0.06);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          z-index: 3;
+          z-index: 4;
           transition: transform 0.2s ease, background 0.2s ease;
           padding: 0;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
         }
 
         .bs-wishlist-btn:hover {
-          transform: scale(1.1);
+          transform: scale(1.12);
           background: #ffffff;
         }
 
@@ -597,115 +551,199 @@ export default function BestSellersSection({
         .bs-img-link {
           text-decoration: none;
           display: block;
+          overflow: hidden;
+          background-color: #f8fafc;
         }
 
         .bs-img-container {
+          position: relative;
           width: 100%;
-          aspect-ratio: 1 / 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          aspect-ratio: 3 / 4;
           overflow: hidden;
-          margin-bottom: 12px;
-          background: #ffffff;
         }
 
         .bs-product-img {
-          max-width: 90%;
-          max-height: 90%;
-          object-fit: contain;
-          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
         }
 
-        .bs-card:hover .bs-product-img {
+        .primary-img {
+          opacity: 1;
+        }
+
+        .secondary-img {
+          position: absolute;
+          inset: 0;
+          opacity: 0;
+        }
+
+        .bs-card:hover .primary-img {
           transform: scale(1.06);
         }
 
-        /* Info block */
+        .bs-card:hover .secondary-img {
+          opacity: 1;
+          transform: scale(1.06);
+        }
+
+        /* Product Details Info */
         .bs-info {
+          padding: 16px 16px 18px;
           display: flex;
           flex-direction: column;
-          margin-top: auto;
+          flex-grow: 1;
+        }
+
+        .bs-meta-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 11px;
+          margin-bottom: 6px;
+        }
+
+        .bs-brand {
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          color: #c2410c;
+        }
+
+        .bs-category {
+          color: #94a3b8;
+          text-transform: capitalize;
         }
 
         .bs-title-link {
           text-decoration: none;
+          color: inherit;
         }
 
         .bs-title {
-          font-family: inherit;
-          font-size: 14px;
+          font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-size: 15px;
           font-weight: 700;
-          color: #111827;
-          margin: 0 0 3px 0;
+          color: #0f172a;
+          margin: 0 0 6px 0;
           line-height: 1.35;
-          white-space: nowrap;
+          height: 40px;
           overflow: hidden;
           text-overflow: ellipsis;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          transition: color 0.2s ease;
         }
 
         .bs-title:hover {
-          color: #6366f1;
+          color: #c2410c;
         }
 
-        .bs-category {
-          font-size: 12px;
-          color: #9ca3af;
-          margin: 0 0 10px 0;
-          text-transform: capitalize;
-          font-weight: 400;
+        .bs-rating-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 12px;
         }
 
-        /* Bottom Row */
+        .stars-box {
+          display: flex;
+          gap: 2px;
+        }
+
+        .reviews-count {
+          font-size: 11px;
+          color: #94a3b8;
+        }
+
         .bs-bottom-row {
           display: flex;
+          align-items: center;
           justify-content: space-between;
-          align-items: baseline;
           margin-top: auto;
+          padding-top: 10px;
+          border-top: 1px solid #f1f5f9;
         }
 
         .bs-price-wrap {
           display: flex;
           align-items: baseline;
-          gap: 6px;
-        }
-
-        .bs-old-price {
-          font-size: 11px;
-          color: #94a3b8;
-          text-decoration: line-through;
-          font-weight: 400;
+          gap: 8px;
         }
 
         .bs-current-price {
-          font-size: 14.5px;
+          font-size: 16px;
           font-weight: 800;
-          color: #111827;
+          color: #0f172a;
+          letter-spacing: -0.2px;
         }
 
-        /* Color Dots */
-        .bs-colors-wrap {
+        .bs-old-price {
+          font-size: 13px;
+          color: #94a3b8;
+          text-decoration: line-through;
+          font-weight: 500;
+        }
+
+        .bs-quick-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #f1f5f9;
+          color: #0f172a;
           display: flex;
           align-items: center;
-          gap: 4px;
+          justify-content: center;
+          text-decoration: none;
+          transition: all 0.2s ease;
         }
 
-        .bs-color-dot {
-          width: 11px;
-          height: 11px;
-          border-radius: 50%;
-          border: 1px solid rgba(0, 0, 0, 0.15);
-          display: inline-block;
-          flex-shrink: 0;
+        .bs-quick-btn:hover {
+          background: #0f172a;
+          color: #ffffff;
+          transform: scale(1.08);
         }
 
         .empty-products-state {
           padding: 60px 20px;
           text-align: center;
           color: #64748b;
-          border: 2px dashed #e2e8f0;
+          background: #f8fafc;
           border-radius: 16px;
-          background: #ffffff;
+          border: 1px dashed #cbd5e1;
+        }
+
+        @media (max-width: 640px) {
+          .best-sellers-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+          }
+          .best-sellers-tabs-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            justify-content: flex-start;
+            padding: 4px;
+          }
+          .tab-btn {
+            white-space: nowrap;
+            padding: 6px 12px;
+            font-size: 12.5px;
+          }
+          .bs-title {
+            font-size: 13px;
+            height: 34px;
+          }
+          .bs-current-price {
+            font-size: 14px;
+          }
+          .bs-info {
+            padding: 10px 10px 12px;
+          }
         }
       `}</style>
     </section>
